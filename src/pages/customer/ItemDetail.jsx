@@ -130,9 +130,21 @@ export default function ItemDetail() {
 
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">{item.name}</h1>
 
-            <p className="text-3xl font-bold text-gradient mb-6">
-              ₹{item.price?.toLocaleString('en-IN')}
-            </p>
+            {/* Item Code — for sharing with staff */}
+            {item.item_code && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-sm font-mono font-bold rounded-lg">
+                  Code: {item.item_code}
+                </span>
+                <span className="text-xs text-gray-400">Share this code with staff</span>
+              </div>
+            )}
+
+            {item.price > 0 && (
+              <p className="text-3xl font-bold text-gradient mb-6">
+                ₹{item.price?.toLocaleString('en-IN')}
+              </p>
+            )}
 
             {/* Occasion tags */}
             {item.occasions && item.occasions.length > 0 && (

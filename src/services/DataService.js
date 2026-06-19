@@ -130,6 +130,55 @@ export async function initSeedDataIfEmpty(seedItems, seedVariants) {
 }
 
 // ═════════════════════════════════════════════════════════════════════
+//  ITEM CODES (e.g. DM-001, reusable if item deleted)
+// ═════════════════════════════════════════════════════════════════════
+function generateItemCode() {
+  const items = load('items');
+  const activeItems = items.filter(i => !i.is_deleted);
+  const usedCodes = new Set(activeItems.map(i => i.item_code).filter(Boolean));
+  
+  for (let n = 1; n <= 9999; n++) {
+    const code = `DM-${String(n).padStart(3, '0')}`;
+    if (!usedCodes.has(code)) return code;
+  }
+  return `DM-${uuidv4().slice(0, 6).toUpperCase()}`;
+}
+
+export function getItemByCode(code) {
+  const items = load('items').filter(i => !i.is_deleted);
+  const item = items.find(i => i.item_code && i.item_code.toUpperCase() === code.toUpperCase());
+  if (!item) return null;
+  return getItemById(item.id);
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  COLLECTIONS (custom folders/categories)
+// ═════════════════════════════════════════════════════════════════════
+export function getCollections() {
+  return load('collections', []);
+}
+
+export async function addCollection(name) {
+  const collections = load('collections', []);
+  const trimmed = name.trim();
+  if (!trimmed || collections.some(c => c.name.toLowerCase() === trimmed.toLowerCase())) return null;
+  const entry = { id: uuidv4(), name: trimmed, created_at: new Date().toISOString() };
+  collections.push(entry);
+  save('collections', collections);
+  if (supabase) await supabase.from('collections').insert(entry);
+  emit('collections');
+  return entry;
+}
+
+export async function deleteCollection(id) {
+  let collections = load('collections', []);
+  collections = collections.filter(c => c.id !== id);
+  save('collections', collections);
+  if (supabase) await supabase.from('collections').delete().eq('id', id);
+  emit('collections');
+}
+
+// ═════════════════════════════════════════════════════════════════════
 //  ITEMS
 // ═════════════════════════════════════════════════════════════════════
 export function getItems(filters = {}) {
@@ -141,6 +190,9 @@ export function getItems(filters = {}) {
   }
   if (filters.occasion && filters.occasion !== 'All') {
     items = items.filter(i => i.occasions && i.occasions.includes(filters.occasion));
+  }
+  if (filters.collection && filters.collection !== 'All') {
+    items = items.filter(i => i.collections && i.collections.includes(filters.collection));
   }
   if (filters.sizes && filters.sizes.length > 0) {
     items = items.filter(i => {
@@ -183,12 +235,16 @@ export async function addItem(data) {
   const variants = load('item_variants');
   const id = uuidv4();
   const now = new Date().toISOString();
+  const itemCode = generateItemCode();
+  const priceVal = data.price ? parseFloat(data.price) : null;
   const item = {
     id,
+    item_code: itemCode,
     name: data.name,
     type: data.type,
     occasions: data.occasions,
-    price: parseFloat(data.price),
+    collections: data.collections || [],
+    price: priceVal,
     fabric: data.fabric || '',
     is_new_arrival: true,
     is_deleted: false,
@@ -453,8 +509,9 @@ export function getAvailableFilterValues() {
   const colours = [...new Map(
     variants.map(v => [v.colour_hex, { name: v.colour_name, hex: v.colour_hex }])
   ).values()];
+  const collections = getCollections();
 
-  return { types, occasions, sizes, colours };
+  return { types, occasions, sizes, colours, collections };
 }
 
 // ═════════════════════════════════════════════════════════════════════

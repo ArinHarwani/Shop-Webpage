@@ -26,10 +26,11 @@ export default function FilterBar({ filters, onFilterChange }) {
   };
 
   const clearAll = () => {
-    onFilterChange({ type: 'All', occasion: 'All', sizes: [], colours: [] });
+    onFilterChange({ type: 'All', occasion: 'All', collection: 'All', sizes: [], colours: [] });
   };
 
   const hasActiveFilters = filters.type !== 'All' || filters.occasion !== 'All' ||
+    filters.collection !== 'All' ||
     (filters.sizes && filters.sizes.length > 0) || (filters.colours && filters.colours.length > 0);
 
   return (
@@ -79,6 +80,30 @@ export default function FilterBar({ filters, onFilterChange }) {
               ))}
             </div>
           </div>
+
+          {/* Collections filter */}
+          {available.collections && available.collections.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Collection</label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setFilter('collection', 'All')}
+                  className={`filter-chip ${(filters.collection || 'All') === 'All' ? 'filter-chip-active' : 'filter-chip-inactive'}`}
+                >
+                  All
+                </button>
+                {available.collections.map(col => (
+                  <button
+                    key={col.id}
+                    onClick={() => setFilter('collection', col.name)}
+                    className={`filter-chip ${filters.collection === col.name ? 'filter-chip-active' : 'filter-chip-inactive'}`}
+                  >
+                    {col.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Size filter */}
           <div className="space-y-2">

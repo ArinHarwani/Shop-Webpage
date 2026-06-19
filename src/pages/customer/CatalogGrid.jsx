@@ -9,7 +9,7 @@ const ITEMS_PER_PAGE = 24;
 
 export default function CatalogGrid() {
   const { trackActivity } = useSession();
-  const [filters, setFilters] = useState({ type: 'All', occasion: 'All', sizes: [], colours: [] });
+  const [filters, setFilters] = useState({ type: 'All', occasion: 'All', collection: 'All', sizes: [], colours: [] });
   const [currentPage, setCurrentPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
 

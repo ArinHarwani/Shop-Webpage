@@ -36,7 +36,8 @@ export default function InventoryList() {
       const q = search.toLowerCase();
       result = result.filter(i =>
         i.name.toLowerCase().includes(q) ||
-        (i.fabric || '').toLowerCase().includes(q)
+        (i.fabric || '').toLowerCase().includes(q) ||
+        (i.item_code || '').toLowerCase().includes(q)
       );
     }
 
@@ -102,7 +103,7 @@ export default function InventoryList() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search items..."
+                placeholder="Search by name, code, or fabric..."
                 className="input-field pl-10"
               />
             </div>
@@ -158,6 +159,7 @@ export default function InventoryList() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Code</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Price</th>
@@ -173,6 +175,11 @@ export default function InventoryList() {
                   const totalCount = item.variants.length;
                   return (
                     <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-mono font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded">
+                          {item.item_code || '—'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4">
                         <Link to={`/admin/item/${item.id}`} className="flex items-center gap-3 group">
                           <div className="w-12 h-14 rounded-lg overflow-hidden bg-gray-100 shrink-0">
@@ -202,7 +209,9 @@ export default function InventoryList() {
                         <span className="text-sm text-gray-600">{TYPE_LABELS[item.type] || item.type}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm font-semibold text-gray-900">₹{item.price?.toLocaleString('en-IN')}</span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {item.price > 0 ? `₹${item.price?.toLocaleString('en-IN')}` : <span className="text-gray-400 font-normal italic">Hidden</span>}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm text-gray-600">{availableCount}/{totalCount} available</span>

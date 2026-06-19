@@ -69,9 +69,14 @@ export default function Shortlist() {
                     <Link to={`/item/${entry.item?.id}`} className="hover:text-brand-600 transition-colors">
                       <h3 className="font-semibold text-gray-900 truncate">{entry.item?.name}</h3>
                     </Link>
-                    <p className="text-lg font-bold text-gradient mt-0.5">
-                      ₹{entry.item?.price?.toLocaleString('en-IN')}
-                    </p>
+                    {entry.item?.item_code && (
+                      <span className="text-xs font-mono text-gray-400">{entry.item.item_code}</span>
+                    )}
+                    {entry.item?.price > 0 && (
+                      <p className="text-lg font-bold text-gradient mt-0.5">
+                        ₹{entry.item?.price?.toLocaleString('en-IN')}
+                      </p>
+                    )}
                     <div className="flex items-center gap-3 mt-2">
                       <div className="flex items-center gap-1.5">
                         <div

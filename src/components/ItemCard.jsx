@@ -46,10 +46,12 @@ export default function ItemCard({ item }) {
           <div className="badge-sold" />
         )}
 
-        {/* Price tag */}
-        <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-lg">
-          <span className="text-lg font-bold text-gray-900">₹{item.price?.toLocaleString('en-IN')}</span>
-        </div>
+        {/* Price tag — hidden if no price set */}
+        {item.price > 0 && (
+          <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-lg">
+            <span className="text-lg font-bold text-gray-900">₹{item.price?.toLocaleString('en-IN')}</span>
+          </div>
+        )}
       </div>
 
       {/* Content */}

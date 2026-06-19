@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import * as DS from '../../services/DataService';
@@ -17,10 +17,36 @@ export default function AddNewItem() {
   const [form, setForm] = useState({
     name: '', type: 'top', occasions: [], price: '', fabric: '',
     godown_number: '', rack_number: '', shelf: '', internal_notes: '',
+    collections: [],
   });
-  const [colours, setColours] = useState([{ name: '', hex: '#4F46E5', sizes: [], imagePreview: null, file: null, imageUrl: '' }]);
+  const [colours, setColours] = useState([{ name: '', hex: '#4F46E5', sizes: [], imagePreview: null, file: null }]);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Collections
+  const [allCollections, setAllCollections] = useState([]);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [showNewCollection, setShowNewCollection] = useState(false);
+
+  // Camera
+  const [cameraIdx, setCameraIdx] = useState(null); // which colour index is using camera
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  useEffect(() => {
+    setAllCollections(DS.getCollections());
+    const unsub = DS.subscribe('collections', () => setAllCollections(DS.getCollections()));
+    return unsub;
+  }, []);
+
+  // Cleanup camera on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
 
   const updateForm = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
@@ -31,6 +57,25 @@ export default function AddNewItem() {
         ? prev.occasions.filter(o => o !== occ)
         : [...prev.occasions, occ],
     }));
+  };
+
+  const toggleCollection = (name) => {
+    setForm(prev => ({
+      ...prev,
+      collections: prev.collections.includes(name)
+        ? prev.collections.filter(c => c !== name)
+        : [...prev.collections, name],
+    }));
+  };
+
+  const handleAddCollection = async () => {
+    if (!newCollectionName.trim()) return;
+    const result = await DS.addCollection(newCollectionName);
+    if (result) {
+      setForm(prev => ({ ...prev, collections: [...prev.collections, result.name] }));
+    }
+    setNewCollectionName('');
+    setShowNewCollection(false);
   };
 
   const updateColour = (idx, key, val) => {
@@ -46,11 +91,13 @@ export default function AddNewItem() {
   };
 
   const addColour = () => {
-    setColours(prev => [...prev, { name: '', hex: '#6366F1', sizes: [], imagePreview: null, file: null, imageUrl: '' }]);
+    setColours(prev => [...prev, { name: '', hex: '#6366F1', sizes: [], imagePreview: null, file: null }]);
   };
 
   const removeColour = (idx) => {
     if (colours.length <= 1) return;
+    // Close camera if open for this colour
+    if (cameraIdx === idx) closeCamera();
     setColours(prev => prev.filter((_, i) => i !== idx));
   };
 
@@ -67,10 +114,54 @@ export default function AddNewItem() {
     setErrors(prev => { const next = { ...prev }; delete next[`image_${idx}`]; return next; });
   };
 
+  // Camera functions
+  const openCamera = async (idx) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      streamRef.current = stream;
+      setCameraIdx(idx);
+      // Wait for next render so videoRef is available
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+        }
+      }, 100);
+    } catch (err) {
+      console.error('Camera access denied:', err);
+      setErrors(prev => ({ ...prev, [`image_${idx}`]: 'Camera access denied. Please allow camera permissions.' }));
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || cameraIdx === null) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoRef.current, 0, 0);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `camera-capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      const url = URL.createObjectURL(file);
+      updateColour(cameraIdx, 'imagePreview', url);
+      updateColour(cameraIdx, 'file', file);
+      closeCamera();
+    }, 'image/jpeg', 0.9);
+  };
+
+  const closeCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setCameraIdx(null);
+  };
+
   const validate = () => {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Item name is required';
-    if (!form.price || parseFloat(form.price) <= 0) errs.price = 'Valid price is required';
+    // Price is now OPTIONAL — no validation needed
     if (form.occasions.length === 0) errs.occasions = 'Select at least one occasion';
     colours.forEach((c, i) => {
       if (!c.name.trim()) errs[`colour_name_${i}`] = 'Colour name is required';
@@ -88,7 +179,7 @@ export default function AddNewItem() {
     try {
       // 1. Upload images first
       const uploadedColours = await Promise.all(colours.map(async (c) => {
-        let finalUrl = c.imageUrl;
+        let finalUrl = '';
         if (c.file) {
           finalUrl = await DS.uploadImage(c.file);
         }
@@ -103,15 +194,15 @@ export default function AddNewItem() {
             colour_name: c.name,
             colour_hex: c.hex,
             size,
-            image_url: c.finalUrl || `https://picsum.photos/seed/${c.name.replace(/\s/g, '')}-${size}/400/500`,
+            image_url: c.finalUrl || `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(c.name)}`,
           });
         });
       });
 
-      // 3. Save to database
+      // 3. Save to database (price can be null)
       await DS.addItem({
         ...form,
-        price: parseFloat(form.price),
+        price: form.price ? parseFloat(form.price) : null,
         colourSizeVariants,
       });
 
@@ -130,6 +221,12 @@ export default function AddNewItem() {
           <h1 className="text-3xl font-bold text-gray-900">Add New Item</h1>
           <p className="text-gray-500 mt-1">Fill in the details to add a new product to the catalog</p>
         </div>
+
+        {errors.form && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+            {errors.form}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Basic Info */}
@@ -162,17 +259,18 @@ export default function AddNewItem() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Price (₹) *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Price (₹) <span className="text-gray-400 font-normal text-xs">Optional — hidden from customer if blank</span>
+                  </label>
                   <input
                     type="number"
                     value={form.price}
                     onChange={(e) => updateForm('price', e.target.value)}
-                    className={`input-field ${errors.price ? 'border-red-400' : ''}`}
-                    placeholder="2499"
+                    className="input-field"
+                    placeholder="Leave blank to hide from customers"
                     min="0"
                     step="1"
                   />
-                  {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price}</p>}
                 </div>
               </div>
 
@@ -204,6 +302,60 @@ export default function AddNewItem() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Collections */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Collections</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Organize items into custom folders</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewCollection(!showNewCollection)}
+                className="btn-ghost text-sm text-brand-600"
+              >
+                + New Collection
+              </button>
+            </div>
+
+            {showNewCollection && (
+              <div className="flex items-center gap-2 mb-4">
+                <input
+                  type="text"
+                  value={newCollectionName}
+                  onChange={(e) => setNewCollectionName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCollection())}
+                  className="input-field flex-1"
+                  placeholder="e.g., Summer Fit, Instagram Worthy..."
+                  autoFocus
+                />
+                <button type="button" onClick={handleAddCollection} className="btn-primary text-sm px-4 py-2">
+                  Add
+                </button>
+                <button type="button" onClick={() => { setShowNewCollection(false); setNewCollectionName(''); }} className="btn-ghost text-sm px-3 py-2">
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {allCollections.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {allCollections.map(col => (
+                  <button
+                    key={col.id}
+                    type="button"
+                    onClick={() => toggleCollection(col.name)}
+                    className={`filter-chip ${form.collections.includes(col.name) ? 'filter-chip-active' : 'filter-chip-inactive'}`}
+                  >
+                    {col.name}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">No collections yet. Create one above!</p>
+            )}
           </div>
 
           {/* Colours & Sizes */}
@@ -280,12 +432,40 @@ export default function AddNewItem() {
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1">Image</label>
-                    <div className="flex items-center gap-4">
+
+                    {/* Camera Modal */}
+                    {cameraIdx === idx && (
+                      <div className="mb-3 rounded-xl overflow-hidden border-2 border-brand-400 bg-black relative">
+                        <video ref={videoRef} className="w-full aspect-[4/3] object-cover" autoPlay playsInline muted />
+                        <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-3">
+                          <button
+                            type="button"
+                            onClick={capturePhoto}
+                            className="w-14 h-14 bg-white rounded-full border-4 border-brand-500 shadow-lg hover:scale-105 transition-transform flex items-center justify-center"
+                          >
+                            <div className="w-10 h-10 bg-brand-500 rounded-full" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={closeCamera}
+                            className="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg"
+                          >
+                            <svg className="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3">
                       {colour.imagePreview && (
                         <div className="w-16 h-20 rounded-lg overflow-hidden bg-gray-100">
                           <img src={colour.imagePreview} alt="Preview" className="w-full h-full object-cover" />
                         </div>
                       )}
+
+                      {/* Upload from file */}
                       <label className="flex-1 flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-brand-400 hover:bg-brand-50/50 transition-all">
                         <input
                           type="file"
@@ -297,9 +477,26 @@ export default function AddNewItem() {
                           <svg className="w-6 h-6 text-gray-400 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          <span className="text-xs text-gray-500">Upload JPG/PNG (max 5MB)</span>
+                          <span className="text-xs text-gray-500">Upload JPG/PNG</span>
                         </div>
                       </label>
+
+                      {/* Camera button */}
+                      {cameraIdx !== idx && (
+                        <button
+                          type="button"
+                          onClick={() => openCamera(idx)}
+                          className="flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-brand-400 hover:bg-brand-50/50 transition-all"
+                        >
+                          <div className="text-center">
+                            <svg className="w-6 h-6 text-gray-400 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-xs text-gray-500">Camera</span>
+                          </div>
+                        </button>
+                      )}
                     </div>
                     {errors[`image_${idx}`] && <p className="text-red-500 text-xs mt-1">{errors[`image_${idx}`]}</p>}
                   </div>
@@ -358,7 +555,7 @@ export default function AddNewItem() {
           {/* Submit */}
           <div className="flex items-center gap-4">
             <button type="submit" disabled={isSubmitting} className="btn-primary">
-              {isSubmitting ? 'Adding...' : 'Add Item to Catalog'}
+              {isSubmitting ? 'Uploading & Saving...' : 'Add Item to Catalog'}
             </button>
             <button type="button" onClick={() => navigate('/admin/inventory')} className="btn-secondary">
               Cancel
