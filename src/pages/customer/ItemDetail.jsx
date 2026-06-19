@@ -49,7 +49,11 @@ export default function ItemDetail() {
     );
   }
 
-  const currentImage = selectedColour?.image_url || 'https://picsum.photos/seed/placeholder/600/750';
+  const currentImage = DS.getOptimizedImageUrl(
+    selectedColour?.image_url || 'https://picsum.photos/seed/placeholder/600/750',
+    800,
+    75
+  );
 
   // Get sizes available for selected colour
   const sizesForColour = item.variants

@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { HeartIcon } from '@heroicons/react/24/outline';
+import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid';
+import * as DS from '../services/DataService';
 
 const TYPE_LABELS = {
   top: 'Top', bottom: 'Bottom', shorts: 'Shorts', long_dress: 'Long Dress',
@@ -26,7 +29,7 @@ export default function ItemCard({ item }) {
       {/* Image */}
       <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
         <img
-          src={imageUrl}
+          src={DS.getOptimizedImageUrl(imageUrl, 400, 60)}
           alt={item.name}
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"

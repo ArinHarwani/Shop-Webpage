@@ -18,7 +18,7 @@ export default function AddNewItem() {
     name: '', type: 'top', occasions: [], price: '', fabric: '',
     godown_number: '', rack_number: '', shelf: '', internal_notes: '',
   });
-  const [colours, setColours] = useState([{ name: '', hex: '#4F46E5', sizes: [], imagePreview: null, imageUrl: '' }]);
+  const [colours, setColours] = useState([{ name: '', hex: '#4F46E5', sizes: [], imagePreview: null, file: null, imageUrl: '' }]);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -46,7 +46,7 @@ export default function AddNewItem() {
   };
 
   const addColour = () => {
-    setColours(prev => [...prev, { name: '', hex: '#6366F1', sizes: [], imagePreview: null, imageUrl: '' }]);
+    setColours(prev => [...prev, { name: '', hex: '#6366F1', sizes: [], imagePreview: null, file: null, imageUrl: '' }]);
   };
 
   const removeColour = (idx) => {
@@ -63,7 +63,7 @@ export default function AddNewItem() {
     }
     const url = URL.createObjectURL(file);
     updateColour(idx, 'imagePreview', url);
-    updateColour(idx, 'imageUrl', url);
+    updateColour(idx, 'file', file);
     setErrors(prev => { const next = { ...prev }; delete next[`image_${idx}`]; return next; });
   };
 
@@ -80,31 +80,47 @@ export default function AddNewItem() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     setIsSubmitting(true);
 
-    // Build colour × size variants
-    const colourSizeVariants = [];
-    colours.forEach(c => {
-      c.sizes.forEach(size => {
-        colourSizeVariants.push({
-          colour_name: c.name,
-          colour_hex: c.hex,
-          size,
-          image_url: c.imageUrl || `https://picsum.photos/seed/${c.name.replace(/\s/g, '')}-${size}/400/500`,
+    try {
+      // 1. Upload images first
+      const uploadedColours = await Promise.all(colours.map(async (c) => {
+        let finalUrl = c.imageUrl;
+        if (c.file) {
+          finalUrl = await DS.uploadImage(c.file);
+        }
+        return { ...c, finalUrl };
+      }));
+
+      // 2. Build colour × size variants
+      const colourSizeVariants = [];
+      uploadedColours.forEach(c => {
+        c.sizes.forEach(size => {
+          colourSizeVariants.push({
+            colour_name: c.name,
+            colour_hex: c.hex,
+            size,
+            image_url: c.finalUrl || `https://picsum.photos/seed/${c.name.replace(/\s/g, '')}-${size}/400/500`,
+          });
         });
       });
-    });
 
-    DS.addItem({
-      ...form,
-      price: parseFloat(form.price),
-      colourSizeVariants,
-    });
+      // 3. Save to database
+      await DS.addItem({
+        ...form,
+        price: parseFloat(form.price),
+        colourSizeVariants,
+      });
 
-    setTimeout(() => navigate('/admin/inventory'), 300);
+      setTimeout(() => navigate('/admin/inventory'), 300);
+    } catch (err) {
+      console.error(err);
+      setErrors({ form: 'Failed to upload images or save item. Check console for details.' });
+      setIsSubmitting(false);
+    }
   };
 
   return (

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../../components/Header';
 import { useSession } from '../../contexts/SessionContext';
+import * as DS from '../../services/DataService';
 
 export default function Shortlist() {
   const { shortlist, removeFromShortlist, sessionId } = useSession();
@@ -53,7 +54,7 @@ export default function Shortlist() {
                   <Link to={`/item/${entry.item?.id}`} className="shrink-0">
                     <div className="w-20 h-24 rounded-xl overflow-hidden bg-gray-100">
                       <img
-                        src={entry.variant?.image_url}
+                        src={DS.getOptimizedImageUrl(entry.variant?.image_url, 800, 75)}
                         alt={entry.item?.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {

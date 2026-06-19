@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-let supabase = null;
+export let supabase = null;
 if (supabaseUrl && supabaseKey) {
   supabase = createClient(supabaseUrl, supabaseKey);
 } else {
@@ -579,4 +579,42 @@ export function getSizeGuideData() {
 export function updateSizeGuide(data) {
   save('size_guide', data);
   emit('settings');
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  STORAGE (Images)
+// ═════════════════════════════════════════════════════════════════════
+export async function uploadImage(file) {
+  if (!supabase) throw new Error("Supabase is not initialized.");
+  
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${uuidv4()}.${fileExt}`;
+  
+  const { data, error } = await supabase.storage
+    .from('product-images')
+    .upload(fileName, file, { upsert: true });
+
+  if (error) {
+    console.error("Storage upload error:", error);
+    throw error;
+  }
+  
+  // Get public URL
+  const { data: publicData } = supabase.storage
+    .from('product-images')
+    .getPublicUrl(fileName);
+    
+  return publicData.publicUrl;
+}
+
+export function getOptimizedImageUrl(url, width = 400, quality = 80) {
+  if (!url || !url.includes('supabase.co')) return url; // Only transform Supabase URLs
+  
+  // Supabase image transformations use query params on the public URL
+  // e.g. https://.../product-images/abc.jpg?width=400&quality=60
+  const urlObj = new URL(url);
+  urlObj.searchParams.set('width', width);
+  urlObj.searchParams.set('quality', quality);
+  // Optional: urlObj.searchParams.set('resize', 'contain');
+  return urlObj.toString();
 }
