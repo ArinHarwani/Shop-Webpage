@@ -22,30 +22,44 @@ import BulkUpload from './pages/admin/BulkUpload';
 import Settings from './pages/admin/Settings';
 
 export default function App() {
+  const appMode = import.meta.env.VITE_APP_MODE || 'both'; // 'customer', 'admin', or 'both'
+
   return (
     <SessionProvider>
       <AdminProvider>
         <Routes>
           {/* Customer Portal */}
-          <Route path="/" element={<WelcomeScreen />} />
-          <Route path="/catalog" element={<CatalogGrid />} />
-          <Route path="/item/:id" element={<ItemDetail />} />
-          <Route path="/shortlist" element={<Shortlist />} />
-          <Route path="/size-guide" element={<SizeGuide />} />
-          <Route path="/expired" element={<SessionExpired />} />
+          {appMode !== 'admin' && (
+            <>
+              <Route path="/" element={<WelcomeScreen />} />
+              <Route path="/catalog" element={<CatalogGrid />} />
+              <Route path="/item/:id" element={<ItemDetail />} />
+              <Route path="/shortlist" element={<Shortlist />} />
+              <Route path="/size-guide" element={<SizeGuide />} />
+              <Route path="/expired" element={<SessionExpired />} />
+            </>
+          )}
 
           {/* Admin Portal */}
-          <Route path="/admin" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<AdminRoute><Dashboard /></AdminRoute>} />
-          <Route path="/admin/shortlists" element={<AdminRoute><CustomerShortlists /></AdminRoute>} />
-          <Route path="/admin/inventory" element={<AdminRoute><InventoryList /></AdminRoute>} />
-          <Route path="/admin/item/:id" element={<AdminRoute><AdminItemDetail /></AdminRoute>} />
-          <Route path="/admin/add-item" element={<AdminRoute><AddNewItem /></AdminRoute>} />
-          <Route path="/admin/bulk-upload" element={<AdminRoute><BulkUpload /></AdminRoute>} />
-          <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+          {appMode !== 'customer' && (
+            <>
+              <Route path="/admin" element={<AdminLogin />} />
+              <Route path="/admin/dashboard" element={<AdminRoute><Dashboard /></AdminRoute>} />
+              <Route path="/admin/shortlists" element={<AdminRoute><CustomerShortlists /></AdminRoute>} />
+              <Route path="/admin/inventory" element={<AdminRoute><InventoryList /></AdminRoute>} />
+              <Route path="/admin/item/:id" element={<AdminRoute><AdminItemDetail /></AdminRoute>} />
+              <Route path="/admin/add-item" element={<AdminRoute><AddNewItem /></AdminRoute>} />
+              <Route path="/admin/bulk-upload" element={<AdminRoute><BulkUpload /></AdminRoute>} />
+              <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+            </>
+          )}
 
           {/* Catch-all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {appMode === 'admin' ? (
+            <Route path="*" element={<Navigate to="/admin" replace />} />
+          ) : (
+            <Route path="*" element={<Navigate to="/" replace />} />
+          )}
         </Routes>
       </AdminProvider>
     </SessionProvider>
