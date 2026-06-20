@@ -4,10 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 
-// Initialize seed data on first load
-import { initSeedDataIfEmpty } from './services/DataService';
-import { seedItems, seedVariants } from './services/seedData';
-initSeedDataIfEmpty(seedItems, seedVariants);
+// Seed data removed to prevent demo items from respawning
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
