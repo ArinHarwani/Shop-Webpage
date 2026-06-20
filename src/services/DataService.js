@@ -39,24 +39,29 @@ export async function syncWithSupabase() {
   if (!supabase || isSyncing) return;
   isSyncing = true;
   try {
-    const [
-      { data: items },
-      { data: variants },
-      { data: sessions },
-      { data: shortlists },
-      { data: settings }
-    ] = await Promise.all([
-      supabase.from('items').select('*'),
-      supabase.from('item_variants').select('*'),
-      supabase.from('customer_sessions').select('*'),
-      supabase.from('shortlist_entries').select('*'),
-      supabase.from('settings').select('*')
+    // Fetch each table individually so one missing table doesn't break everything
+    const fetchTable = async (table) => {
+      try {
+        const { data, error } = await supabase.from(table).select('*');
+        if (error) { console.warn(`Table "${table}" not found or error:`, error.message); return null; }
+        return data;
+      } catch (e) { console.warn(`Failed to fetch ${table}:`, e); return null; }
+    };
+
+    const [items, variants, sessions, shortlists, settings, collections] = await Promise.all([
+      fetchTable('items'),
+      fetchTable('item_variants'),
+      fetchTable('customer_sessions'),
+      fetchTable('shortlist_entries'),
+      fetchTable('settings'),
+      fetchTable('collections'),
     ]);
 
     if (items) save('items', items);
     if (variants) save('item_variants', variants);
     if (sessions) save('customer_sessions', sessions);
     if (shortlists) save('shortlist_items', shortlists);
+    if (collections) save('collections', collections);
     
     if (settings) {
       const settingsObj = {};
@@ -69,6 +74,7 @@ export async function syncWithSupabase() {
     emit('customer_sessions');
     emit('shortlist_items');
     emit('settings');
+    emit('collections');
 
     // Subscribe to realtime changes
     supabase.channel('custom-all-channel')
@@ -84,6 +90,9 @@ export async function syncWithSupabase() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shortlist_entries' }, payload => {
         syncTable('shortlist_items', payload);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'collections' }, payload => {
+        syncTable('collections', payload);
       })
       .subscribe();
       
