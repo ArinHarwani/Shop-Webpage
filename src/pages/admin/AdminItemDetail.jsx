@@ -36,6 +36,9 @@ export default function AdminItemDetail() {
     }
   }, [id, refreshKey]);
 
+  const [isDeletingVariant, setIsDeletingVariant] = useState(false);
+  const [variantToDelete, setVariantToDelete] = useState(null);
+
   if (!item) {
     return (
       <AdminLayout>
@@ -46,9 +49,6 @@ export default function AdminItemDetail() {
       </AdminLayout>
     );
   }
-
-  const [isDeletingVariant, setIsDeletingVariant] = useState(false);
-  const [variantToDelete, setVariantToDelete] = useState(null);
 
   const handleToggleVariant = (variantId, currentStatus) => {
     DS.updateVariantStatus(variantId, currentStatus === 'sold' ? 'available' : 'sold');
