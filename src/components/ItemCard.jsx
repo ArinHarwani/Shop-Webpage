@@ -7,7 +7,7 @@ const TYPE_LABELS = {
   coord_set: 'Coord Set', kurti: 'Kurti', other: 'Others',
 };
 
-export default function ItemCard({ item }) {
+export default function ItemCard({ item, priority = false }) {
   const [selectedColourIdx, setSelectedColourIdx] = useState(0);
   const colours = item.colours || [];
   const currentColour = colours[selectedColourIdx] || {};
@@ -29,7 +29,8 @@ export default function ItemCard({ item }) {
         <img
           src={DS.getOptimizedImageUrl(imageUrl, 400, 60)}
           alt={item.name}
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
+          fetchpriority={priority ? 'high' : 'auto'}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           onError={(e) => {
             e.target.src = `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(item.name)}`;

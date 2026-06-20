@@ -111,6 +111,8 @@ export default function ItemDetail() {
               <img
                 src={currentImage}
                 alt={item.name}
+                loading="eager"
+                fetchpriority="high"
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.target.src = `https://placehold.co/600x750/EEF2FF/4F46E5?text=${encodeURIComponent(item.name)}`;

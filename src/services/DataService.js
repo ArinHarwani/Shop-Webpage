@@ -648,39 +648,37 @@ export function updateSizeGuide(data) {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-//  STORAGE (Images)
+//  STORAGE (Images - Cloudinary)
 // ═════════════════════════════════════════════════════════════════════
 export async function uploadImage(file) {
-  if (!supabase) throw new Error("Supabase is not initialized.");
-  
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${uuidv4()}.${fileExt}`;
-  
-  const { data, error } = await supabase.storage
-    .from('product-images')
-    .upload(fileName, file, { upsert: true });
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', 'shop_products_upload');
 
-  if (error) {
-    console.error("Storage upload error:", error);
-    throw error;
+  const res = await fetch('https://api.cloudinary.com/v1_1/dvdxdqnie/image/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    console.error("Cloudinary upload error:", err);
+    throw new Error(err.error?.message || "Upload failed");
   }
-  
-  // Get public URL
-  const { data: publicData } = supabase.storage
-    .from('product-images')
-    .getPublicUrl(fileName);
-    
-  return publicData.publicUrl;
+
+  const data = await res.json();
+  return data.secure_url;
 }
 
 export function getOptimizedImageUrl(url, width = 400, quality = 80) {
-  if (!url || !url.includes('supabase.co')) return url; // Only transform Supabase URLs
+  if (!url || !url.includes('res.cloudinary.com')) return url; 
   
-  // Supabase image transformations use query params on the public URL
-  // e.g. https://.../product-images/abc.jpg?width=400&quality=60
-  const urlObj = new URL(url);
-  urlObj.searchParams.set('width', width);
-  urlObj.searchParams.set('quality', quality);
-  // Optional: urlObj.searchParams.set('resize', 'contain');
-  return urlObj.toString();
+  // Cloudinary URLs format: https://res.cloudinary.com/<cloud_name>/image/upload/v123...
+  // Insert transformations after /upload/
+  if (url.includes('/upload/')) {
+    const parts = url.split('/upload/');
+    // Check if there are already transformations (we assume standard unsigned uploads don't have them in the base secure_url)
+    return `${parts[0]}/upload/c_limit,w_${width},q_${quality}/${parts[1]}`;
+  }
+  return url;
 }

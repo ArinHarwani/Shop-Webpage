@@ -10,7 +10,7 @@ const ITEMS_PER_PAGE = 24;
 export default function CatalogGrid() {
   const { trackActivity } = useSession();
   const [filters, setFilters] = useState({ type: 'All', occasion: 'All', collection: 'All', sizes: [], colours: [] });
-  const [currentPage, setCurrentPage] = useState(1);
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Listen for data changes
@@ -24,16 +24,17 @@ export default function CatalogGrid() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, refreshKey]);
 
-  const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
-  const paginatedItems = allItems.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const paginatedItems = allItems.slice(0, visibleCount);
+  const hasMore = visibleCount < allItems.length;
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
-    setCurrentPage(1);
+    setVisibleCount(ITEMS_PER_PAGE);
     trackActivity();
+  };
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + ITEMS_PER_PAGE);
   };
 
   return (
@@ -57,9 +58,10 @@ export default function CatalogGrid() {
               <div
                 key={item.id}
                 className="animate-fade-in"
-                style={{ animationDelay: `${idx * 50}ms` }}
+                style={{ animationDelay: `${(idx % ITEMS_PER_PAGE) * 50}ms` }}
               >
-                <ItemCard item={item} />
+                {/* We pass high priority to the first 4 items of the very first page to improve LCP */}
+                <ItemCard item={item} priority={idx < 4} />
               </div>
             ))}
           </div>
@@ -75,39 +77,14 @@ export default function CatalogGrid() {
           </div>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-10">
+        {/* Load More Pagination */}
+        {hasMore && (
+          <div className="flex justify-center mt-12 mb-8">
             <button
-              onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo(0, 0); }}
-              disabled={currentPage === 1}
-              className="btn-ghost disabled:opacity-30"
+              onClick={handleLoadMore}
+              className="px-8 py-3 bg-white border-2 border-brand-100 text-brand-600 font-semibold rounded-xl hover:border-brand-300 hover:bg-brand-50 transition-all duration-300 shadow-sm"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-              <button
-                key={page}
-                onClick={() => { setCurrentPage(page); window.scrollTo(0, 0); }}
-                className={`w-10 h-10 rounded-xl font-semibold text-sm transition-all duration-200 ${
-                  page === currentPage
-                    ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/25'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-            <button
-              onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); window.scrollTo(0, 0); }}
-              disabled={currentPage === totalPages}
-              className="btn-ghost disabled:opacity-30"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              Load More Items
             </button>
           </div>
         )}
