@@ -10,9 +10,9 @@ export default function WelcomeScreen() {
   const { startSession } = useSession();
   const settings = DS.getSettings();
 
-  const handleStart = () => {
+  const handleStart = async () => {
     setIsAnimating(true);
-    startSession(name.trim());
+    await startSession(name.trim());
     setTimeout(() => navigate('/catalog'), 400);
   };
 

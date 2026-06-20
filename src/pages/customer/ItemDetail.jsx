@@ -63,21 +63,21 @@ export default function ItemDetail() {
       return acc;
     }, {});
 
-  const handleAddToShortlist = () => {
+  const handleAddToShortlist = async () => {
     if (!selectedVariant) {
       // Pick first available variant for selected colour
       const firstAvailable = item.variants.find(
         v => selectedColour && v.colour_hex === selectedColour.hex && v.status === 'available'
       );
       if (firstAvailable) {
-        const result = addToShortlist(item.id, firstAvailable.id);
+        const result = await addToShortlist(item.id, firstAvailable.id);
         if (result) {
           setAddedFeedback(true);
           setTimeout(() => setAddedFeedback(false), 2000);
         }
       }
     } else {
-      const result = addToShortlist(item.id, selectedVariant.id);
+      const result = await addToShortlist(item.id, selectedVariant.id);
       if (result) {
         setAddedFeedback(true);
         setTimeout(() => setAddedFeedback(false), 2000);

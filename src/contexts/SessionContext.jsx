@@ -77,17 +77,17 @@ export function SessionProvider({ children }) {
     return () => clearInterval(expiryChecker.current);
   }, [sessionId, navigate, location.pathname]);
 
-  const startSession = useCallback((customerName = '') => {
+  const startSession = useCallback(async (customerName = '') => {
     const settings = DS.getSettings();
-    const session = DS.createSession(customerName, settings.deviceLabel || 'Tablet 1');
+    const session = await DS.createSession(customerName, settings.deviceLabel || 'Tablet 1');
     localStorage.setItem('dm_current_session', session.id);
     setSessionId(session.id);
     return session;
   }, []);
 
-  const endSession = useCallback(() => {
+  const endSession = useCallback(async () => {
     if (sessionId) {
-      DS.expireSession(sessionId);
+      await DS.expireSession(sessionId);
     }
     localStorage.removeItem('dm_current_session');
     setSessionId(null);
@@ -95,17 +95,17 @@ export function SessionProvider({ children }) {
     setShortlistCount(0);
   }, [sessionId]);
 
-  const addToShortlist = useCallback((itemId, variantId) => {
+  const addToShortlist = useCallback(async (itemId, variantId) => {
     if (!sessionId) return null;
     trackActivity();
-    const result = DS.addToShortlist(sessionId, itemId, variantId);
+    const result = await DS.addToShortlist(sessionId, itemId, variantId);
     refreshShortlist();
     return result;
   }, [sessionId, trackActivity, refreshShortlist]);
 
-  const removeFromShortlist = useCallback((entryId) => {
+  const removeFromShortlist = useCallback(async (entryId) => {
     trackActivity();
-    DS.removeFromShortlist(entryId);
+    await DS.removeFromShortlist(entryId);
     refreshShortlist();
   }, [trackActivity, refreshShortlist]);
 
