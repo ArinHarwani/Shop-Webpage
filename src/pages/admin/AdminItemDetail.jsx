@@ -64,13 +64,18 @@ export default function AdminItemDetail() {
     // Collect all public_ids
     const publicIds = [...new Set(item.variants.map(v => v.cloudinary_public_id).filter(Boolean))];
     
+    console.log(`[Delete Item] Found ${publicIds.length} Cloudinary public_ids from ${item.variants.length} variants:`, publicIds);
+    
     if (publicIds.length > 0) {
-      const success = await DS.deleteCloudinaryImages(publicIds);
-      if (!success) {
-        alert("Failed to delete images from Cloudinary. Database deletion aborted to prevent orphaned files.");
+      const result = await DS.deleteCloudinaryImages(publicIds);
+      if (result !== true && !result?.success) {
+        const errorMsg = result?.error || 'Unknown error';
+        alert(`Cloudinary deletion failed:\n\n${errorMsg}\n\nDatabase deletion aborted to prevent orphaned files.`);
         setShowDeleteDialog(false);
         return;
       }
+    } else {
+      console.warn("[Delete Item] No cloudinary_public_id found on any variant — images won't be deleted from Cloudinary.");
     }
     
     await DS.deleteItem(id);
@@ -98,9 +103,10 @@ export default function AdminItemDetail() {
     }
 
     if (publicId && !isImageUsedElsewhere) {
-      const success = await DS.deleteCloudinaryImages([publicId]);
-      if (!success) {
-        alert("Failed to delete image from Cloudinary. Aborted.");
+      const result = await DS.deleteCloudinaryImages([publicId]);
+      if (result !== true && !result?.success) {
+        const errorMsg = result?.error || 'Unknown error';
+        alert(`Cloudinary deletion failed:\n\n${errorMsg}\n\nColour removal aborted.`);
         setIsDeletingVariant(false);
         setVariantToDelete(null);
         return;

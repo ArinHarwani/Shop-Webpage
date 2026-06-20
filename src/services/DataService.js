@@ -279,6 +279,7 @@ export async function addItem(data) {
         colour_hex: v.colour_hex,
         size: v.size,
         image_url: v.image_url || `https://picsum.photos/seed/${id}-${v.colour_name}/400/500`,
+        cloudinary_public_id: v.cloudinary_public_id || null,
         status: 'available',
         sold_at: null,
       });
@@ -705,27 +706,36 @@ export async function uploadImage(file) {
 }
 
 export async function deleteCloudinaryImages(publicIds) {
-  if (!supabase || !publicIds || publicIds.length === 0) return true;
+  if (!publicIds || publicIds.length === 0) {
+    console.warn("deleteCloudinaryImages called with empty publicIds — cloudinary_public_id was likely never saved for these variants.");
+    return true; // Nothing to delete, don't block the DB deletion
+  }
+  if (!supabase) {
+    console.warn("Supabase not configured — skipping Cloudinary deletion.");
+    return true;
+  }
   
   try {
+    console.log("Calling Edge Function to delete Cloudinary images:", publicIds);
     const { data, error } = await supabase.functions.invoke('delete-cloudinary-image', {
       body: { publicIds }
     });
     
     if (error) {
-      console.error("Error from Edge Function:", error);
-      return false;
+      console.error("Edge Function invocation error:", error);
+      return { success: false, error: `Edge Function error: ${error.message || JSON.stringify(error)}` };
     }
     
     if (!data || !data.success) {
-      console.error("Cloudinary deletion failed:", data);
-      return false;
+      console.error("Cloudinary deletion failed. Response:", data);
+      return { success: false, error: `Cloudinary API returned failure: ${JSON.stringify(data)}` };
     }
     
-    return true;
+    console.log("Cloudinary deletion successful:", data.results);
+    return { success: true, results: data.results };
   } catch (err) {
-    console.error("Failed to invoke edge function:", err);
-    return false;
+    console.error("Failed to invoke Edge Function:", err);
+    return { success: false, error: `Network/invocation error: ${err.message}` };
   }
 }
 
