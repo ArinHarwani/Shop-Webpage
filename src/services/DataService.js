@@ -278,7 +278,7 @@ export async function addItem(data) {
         colour_name: v.colour_name,
         colour_hex: v.colour_hex,
         size: v.size,
-        image_url: v.image_url || `https://picsum.photos/seed/${id}-${v.colour_name}/400/500`,
+        image_url: v.image_url || `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(v.colour_name || 'Item')}`,
         cloudinary_public_id: v.cloudinary_public_id || null,
         status: 'available',
         sold_at: null,

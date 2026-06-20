@@ -11,7 +11,7 @@ export default function ItemCard({ item, priority = false }) {
   const [selectedColourIdx, setSelectedColourIdx] = useState(0);
   const colours = item.colours || [];
   const currentColour = colours[selectedColourIdx] || {};
-  const imageUrl = currentColour.image_url || 'https://picsum.photos/seed/placeholder/400/500';
+  const imageUrl = currentColour.image_url || `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(item.name)}`;
 
   // Check if all variants for current colour are sold
   const currentColourVariants = (item.variants || []).filter(

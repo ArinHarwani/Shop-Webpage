@@ -88,7 +88,7 @@ export default function SwipeMode({ items }) {
   const item = items[currentIndex];
   const colours = item.colours || [];
   const currentColour = colours[0] || {};
-  const imageUrl = currentColour.image_url || 'https://picsum.photos/seed/placeholder/800/1000';
+  const imageUrl = currentColour.image_url || `https://placehold.co/800x1000/EEF2FF/4F46E5?text=${encodeURIComponent(item.name)}`;
 
   return (
     <div className="flex flex-col items-center justify-center py-4 w-full max-w-md mx-auto">
