@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { SessionProvider } from './contexts/SessionContext';
 import { AdminProvider, AdminRoute } from './contexts/AdminContext';
@@ -23,6 +23,14 @@ import Settings from './pages/admin/Settings';
 
 export default function App() {
   const appMode = import.meta.env.VITE_APP_MODE || 'both'; // 'customer', 'admin', or 'both'
+
+  // Temporary utility to clear cache if needed
+  useEffect(() => {
+    if (window.location.search.includes('clear=true')) {
+      localStorage.clear();
+      window.location.href = window.location.pathname; // strip query params
+    }
+  }, []);
 
   return (
     <SessionProvider>
