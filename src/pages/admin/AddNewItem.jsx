@@ -208,6 +208,9 @@ export default function AddNewItem() {
     if (form.occasions.length === 0) errs.occasions = 'Select at least one occasion';
     
     imageBlocks.forEach((block, bIdx) => {
+      if (!block.file && !block.imagePreview) {
+        errs[`image_${block.id}`] = 'Please upload or capture an image';
+      }
       block.colours.forEach((c, cIdx) => {
         if (!c.name.trim()) errs[`colour_name_${block.id}_${c.id}`] = 'Colour name is required';
         if (c.sizes.length === 0) errs[`colour_sizes_${block.id}_${c.id}`] = 'Select at least one size';
@@ -224,13 +227,18 @@ export default function AddNewItem() {
 
     try {
       // 1. Upload images first
-      const uploadedBlocks = await Promise.all(imageBlocks.map(async (block) => {
+      console.log('[AddNewItem] Starting upload for', imageBlocks.length, 'image block(s)');
+      const uploadedBlocks = await Promise.all(imageBlocks.map(async (block, idx) => {
         let finalUrl = '';
         let publicId = '';
         if (block.file) {
+          console.log(`[AddNewItem] Uploading block ${idx + 1}, file: ${block.file.name} (${(block.file.size / 1024).toFixed(1)}KB)`);
           const res = await DS.uploadImage(block.file);
           finalUrl = res.url;
           publicId = res.public_id;
+          console.log(`[AddNewItem] Upload success. URL: ${finalUrl}, public_id: ${publicId}`);
+        } else {
+          console.warn(`[AddNewItem] Block ${idx + 1} has no file to upload!`);
         }
         return { ...block, finalUrl, publicId };
       }));
@@ -251,6 +259,8 @@ export default function AddNewItem() {
         });
       });
 
+      console.log('[AddNewItem] Built', colourSizeVariants.length, 'variants. Sample image_url:', colourSizeVariants[0]?.image_url?.substring(0, 60));
+
       // 3. Save to database
       await DS.addItem({
         ...form,
@@ -260,8 +270,8 @@ export default function AddNewItem() {
 
       setTimeout(() => navigate('/admin/inventory'), 300);
     } catch (err) {
-      console.error(err);
-      setErrors({ form: 'Failed to upload images or save item. Check console for details.' });
+      console.error('[AddNewItem] Submit failed:', err);
+      setErrors({ form: `Upload/save failed: ${err.message}` });
       setIsSubmitting(false);
     }
   };

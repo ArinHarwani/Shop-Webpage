@@ -690,18 +690,23 @@ export async function uploadImage(file) {
   formData.append('file', file);
   formData.append('upload_preset', 'shop_products_upload');
 
+  console.log('[uploadImage] Uploading to Cloudinary...', { fileName: file.name, fileSize: file.size, fileType: file.type });
+
   const res = await fetch('https://api.cloudinary.com/v1_1/dvdxdqnie/image/upload', {
     method: 'POST',
     body: formData,
   });
 
+  console.log('[uploadImage] Cloudinary response status:', res.status);
+
   if (!res.ok) {
     const err = await res.json();
-    console.error("Cloudinary upload error:", err);
+    console.error("[uploadImage] Cloudinary upload error:", err);
     throw new Error(err.error?.message || "Upload failed");
   }
 
   const data = await res.json();
+  console.log('[uploadImage] Success! secure_url:', data.secure_url?.substring(0, 80), 'public_id:', data.public_id);
   return { url: data.secure_url, public_id: data.public_id };
 }
 
