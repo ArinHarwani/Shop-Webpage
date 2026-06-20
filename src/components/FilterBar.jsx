@@ -26,10 +26,10 @@ export default function FilterBar({ filters, onFilterChange }) {
   };
 
   const clearAll = () => {
-    onFilterChange({ type: 'All', occasion: 'All', collection: 'All', sizes: [], colours: [] });
+    onFilterChange({ type: null, occasion: 'All', collection: 'All', sizes: [], colours: [] });
   };
 
-  const hasActiveFilters = filters.type !== 'All' || filters.occasion !== 'All' ||
+  const hasActiveFilters = filters.type !== null || filters.occasion !== 'All' ||
     filters.collection !== 'All' ||
     (filters.sizes && filters.sizes.length > 0) || (filters.colours && filters.colours.length > 0);
 
@@ -41,12 +41,6 @@ export default function FilterBar({ filters, onFilterChange }) {
           <div className="space-y-2">
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</label>
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setFilter('type', 'All')}
-                className={`filter-chip ${filters.type === 'All' ? 'filter-chip-active' : 'filter-chip-inactive'}`}
-              >
-                All
-              </button>
               {Object.entries(TYPE_LABELS).map(([val, label]) => (
                 <button
                   key={val}

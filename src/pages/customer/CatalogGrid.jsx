@@ -9,7 +9,7 @@ const ITEMS_PER_PAGE = 24;
 
 export default function CatalogGrid() {
   const { trackActivity } = useSession();
-  const [filters, setFilters] = useState({ type: 'All', occasion: 'All', collection: 'All', sizes: [], colours: [] });
+  const [filters, setFilters] = useState({ type: null, occasion: 'All', collection: 'All', sizes: [], colours: [] });
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -20,6 +20,7 @@ export default function CatalogGrid() {
   }, []);
 
   const allItems = useMemo(() => {
+    if (!filters.type) return [];
     return DS.getItems(filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, refreshKey]);
@@ -64,6 +65,16 @@ export default function CatalogGrid() {
                 <ItemCard item={item} priority={idx < 4} />
               </div>
             ))}
+          </div>
+        ) : !filters.type ? (
+          <div className="text-center py-24">
+            <div className="w-20 h-20 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-10 h-10 text-brand-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Select a Category</h3>
+            <p className="text-gray-500">Please choose a category from the filters above to view items</p>
           </div>
         ) : (
           <div className="text-center py-24">
