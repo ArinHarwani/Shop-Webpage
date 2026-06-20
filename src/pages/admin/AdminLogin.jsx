@@ -12,10 +12,13 @@ export default function AdminLogin() {
   const settings = DS.getSettings();
 
   // Redirect if already logged in
-  if (isAuthenticated) {
-    navigate('/admin/dashboard');
-    return null;
-  }
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/admin/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (isAuthenticated) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
