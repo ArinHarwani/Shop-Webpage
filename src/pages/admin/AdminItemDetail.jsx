@@ -47,6 +47,9 @@ export default function AdminItemDetail() {
     );
   }
 
+  const [isDeletingVariant, setIsDeletingVariant] = useState(false);
+  const [variantToDelete, setVariantToDelete] = useState(null);
+
   const handleToggleVariant = (variantId, currentStatus) => {
     DS.updateVariantStatus(variantId, currentStatus === 'sold' ? 'available' : 'sold');
   };
@@ -57,16 +60,74 @@ export default function AdminItemDetail() {
     setRefreshKey(k => k + 1);
   };
 
-  const handleDelete = () => {
-    DS.deleteItem(id);
+  const handleDeleteItem = async () => {
+    // Collect all public_ids
+    const publicIds = [...new Set(item.variants.map(v => v.cloudinary_public_id).filter(Boolean))];
+    
+    if (publicIds.length > 0) {
+      const success = await DS.deleteCloudinaryImages(publicIds);
+      if (!success) {
+        alert("Failed to delete images from Cloudinary. Database deletion aborted to prevent orphaned files.");
+        setShowDeleteDialog(false);
+        return;
+      }
+    }
+    
+    await DS.deleteItem(id);
     navigate('/admin/inventory');
+  };
+
+  const handleDeleteColour = async (group) => {
+    setVariantToDelete(group);
+  };
+
+  const confirmDeleteColour = async () => {
+    if (!variantToDelete) return;
+    setIsDeletingVariant(true);
+
+    const publicId = variantToDelete.image_public_id;
+    const variantsToRemove = variantToDelete.variants;
+    
+    // Check if any other color in this item uses the same image
+    let isImageUsedElsewhere = false;
+    if (publicId) {
+      isImageUsedElsewhere = item.variants.some(v => 
+        v.cloudinary_public_id === publicId && 
+        v.colour_hex !== variantToDelete.colour_hex
+      );
+    }
+
+    if (publicId && !isImageUsedElsewhere) {
+      const success = await DS.deleteCloudinaryImages([publicId]);
+      if (!success) {
+        alert("Failed to delete image from Cloudinary. Aborted.");
+        setIsDeletingVariant(false);
+        setVariantToDelete(null);
+        return;
+      }
+    }
+
+    // Delete variants from DB
+    for (const v of variantsToRemove) {
+      await DS.deleteVariant(v.id);
+    }
+
+    setIsDeletingVariant(false);
+    setVariantToDelete(null);
+    setRefreshKey(k => k + 1);
   };
 
   // Group variants by colour
   const variantsByColour = {};
   item.variants.forEach(v => {
     if (!variantsByColour[v.colour_hex]) {
-      variantsByColour[v.colour_hex] = { colour_name: v.colour_name, colour_hex: v.colour_hex, image_url: v.image_url, variants: [] };
+      variantsByColour[v.colour_hex] = { 
+        colour_name: v.colour_name, 
+        colour_hex: v.colour_hex, 
+        image_url: v.image_url, 
+        image_public_id: v.cloudinary_public_id,
+        variants: [] 
+      };
     }
     variantsByColour[v.colour_hex].variants.push(v);
   });
@@ -129,11 +190,19 @@ export default function AdminItemDetail() {
               {Object.values(variantsByColour).map(group => (
                 <div key={group.colour_hex} className="border border-gray-100 rounded-xl overflow-hidden">
                   <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
-                    <div className="w-6 h-6 rounded-full border-2 border-white shadow" style={{ backgroundColor: group.colour_hex }} />
-                    <span className="font-medium text-gray-900">{group.colour_name}</span>
-                    <span className="text-xs text-gray-400">
-                      {group.variants.filter(v => v.status === 'available').length}/{group.variants.length} available
-                    </span>
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-6 h-6 rounded-full border-2 border-white shadow" style={{ backgroundColor: group.colour_hex }} />
+                      <span className="font-medium text-gray-900">{group.colour_name}</span>
+                      <span className="text-xs text-gray-400">
+                        {group.variants.filter(v => v.status === 'available').length}/{group.variants.length} available
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteColour(group)}
+                      className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1"
+                    >
+                      Remove Colour
+                    </button>
                   </div>
                   <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {group.variants.map(v => (
@@ -250,14 +319,25 @@ export default function AdminItemDetail() {
         </div>
       </div>
 
-      {/* Delete Confirmation */}
+      {/* Delete Confirmation for Item */}
       <ConfirmDialog
         isOpen={showDeleteDialog}
         title="Remove Item Permanently"
-        message="This will remove the item from the catalog completely. This cannot be undone."
+        message="This will remove the item from the catalog completely, and delete all associated photos from Cloudinary. This cannot be undone."
         confirmLabel="Remove Permanently"
-        onConfirm={handleDelete}
+        onConfirm={handleDeleteItem}
         onCancel={() => setShowDeleteDialog(false)}
+        danger
+      />
+
+      {/* Delete Confirmation for Variant Group */}
+      <ConfirmDialog
+        isOpen={!!variantToDelete}
+        title="Remove Colour Variant"
+        message={`This will remove the colour "${variantToDelete?.colour_name}" and all its sizes. If this is the only colour using its photo, the photo will also be deleted from Cloudinary. This cannot be undone.`}
+        confirmLabel={isDeletingVariant ? "Removing..." : "Remove Colour"}
+        onConfirm={confirmDeleteColour}
+        onCancel={() => setVariantToDelete(null)}
         danger
       />
     </AdminLayout>

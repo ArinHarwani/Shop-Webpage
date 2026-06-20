@@ -305,7 +305,20 @@ export async function updateItem(id, data) {
 }
 
 export async function deleteItem(id) {
-  return updateItem(id, { is_deleted: true });
+  const items = load('items');
+  const idx = items.findIndex(i => i.id === id);
+  if (idx === -1) return;
+  
+  // Remove locally
+  items.splice(idx, 1);
+  save('items', items);
+  
+  // Hard delete in Supabase (will cascade to variants and shortlists)
+  if (supabase) {
+    await supabase.from('items').delete().eq('id', id);
+  }
+  
+  emit('items');
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -313,6 +326,22 @@ export async function deleteItem(id) {
 // ═════════════════════════════════════════════════════════════════════
 export function getVariants(itemId) {
   return load('item_variants').filter(v => v.item_id === itemId);
+}
+
+export async function deleteVariant(variantId) {
+  const variants = load('item_variants');
+  const idx = variants.findIndex(v => v.id === variantId);
+  if (idx === -1) return;
+  
+  variants.splice(idx, 1);
+  save('item_variants', variants);
+  
+  if (supabase) {
+    await supabase.from('item_variants').delete().eq('id', variantId);
+  }
+  
+  emit('item_variants');
+  emit('items');
 }
 
 export async function updateVariantStatus(variantId, status) {
@@ -474,6 +503,11 @@ export function getDashboardMetrics() {
     return iv.some(v => v.status === 'available');
   }).length;
 
+  // Calculate unique images uploaded to Cloudinary
+  const totalImagesUploaded = new Set(
+    variants.map(v => v.cloudinary_public_id).filter(Boolean)
+  ).size;
+
   const soldToday = variants.filter(v => v.status === 'sold' && v.sold_at && v.sold_at >= todayStart).length;
 
   const pendingRemoval = items.filter(i => {
@@ -502,7 +536,7 @@ export function getDashboardMetrics() {
 
   const newArrivals = items.filter(i => i.created_at >= weekAgo).length;
 
-  return { totalActive, soldToday, pendingRemoval, activeSessions, mostShortlisted, newArrivals };
+  return { totalActive, soldToday, pendingRemoval, activeSessions, mostShortlisted, newArrivals, totalImagesUploaded };
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -667,8 +701,34 @@ export async function uploadImage(file) {
   }
 
   const data = await res.json();
-  return data.secure_url;
+  return { url: data.secure_url, public_id: data.public_id };
 }
+
+export async function deleteCloudinaryImages(publicIds) {
+  if (!supabase || !publicIds || publicIds.length === 0) return true;
+  
+  try {
+    const { data, error } = await supabase.functions.invoke('delete-cloudinary-image', {
+      body: { publicIds }
+    });
+    
+    if (error) {
+      console.error("Error from Edge Function:", error);
+      return false;
+    }
+    
+    if (!data || !data.success) {
+      console.error("Cloudinary deletion failed:", data);
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error("Failed to invoke edge function:", err);
+    return false;
+  }
+}
+
 
 export function getOptimizedImageUrl(url, width = 400, quality = 80) {
   if (!url || !url.includes('res.cloudinary.com')) return url; 

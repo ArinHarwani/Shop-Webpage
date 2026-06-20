@@ -19,7 +19,16 @@ export default function AddNewItem() {
     godown_number: '', rack_number: '', shelf: '', internal_notes: '',
     collections: [],
   });
-  const [colours, setColours] = useState([{ name: '', hex: '#4F46E5', sizes: [], imagePreview: null, file: null }]);
+
+  const [imageBlocks, setImageBlocks] = useState([
+    {
+      id: Date.now().toString(),
+      imagePreview: null,
+      file: null,
+      colours: [{ id: Date.now().toString() + 'c', name: '', hex: '#4F46E5', sizes: [] }]
+    }
+  ]);
+
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -29,7 +38,7 @@ export default function AddNewItem() {
   const [showNewCollection, setShowNewCollection] = useState(false);
 
   // Camera
-  const [cameraIdx, setCameraIdx] = useState(null); // which colour index is using camera
+  const [cameraBlockId, setCameraBlockId] = useState(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
@@ -39,7 +48,6 @@ export default function AddNewItem() {
     return unsub;
   }, []);
 
-  // Cleanup camera on unmount
   useEffect(() => {
     return () => {
       if (streamRef.current) {
@@ -78,49 +86,86 @@ export default function AddNewItem() {
     setShowNewCollection(false);
   };
 
-  const updateColour = (idx, key, val) => {
-    setColours(prev => prev.map((c, i) => i === idx ? { ...c, [key]: val } : c));
+  // Image Block Management
+  const addImageBlock = () => {
+    setImageBlocks(prev => [...prev, {
+      id: Date.now().toString(),
+      imagePreview: null,
+      file: null,
+      colours: [{ id: Date.now().toString() + 'c', name: '', hex: '#6366F1', sizes: [] }]
+    }]);
   };
 
-  const toggleColourSize = (idx, size) => {
-    setColours(prev => prev.map((c, i) => {
-      if (i !== idx) return c;
-      const sizes = c.sizes.includes(size) ? c.sizes.filter(s => s !== size) : [...c.sizes, size];
-      return { ...c, sizes };
-    }));
+  const removeImageBlock = (blockId) => {
+    if (imageBlocks.length <= 1) return;
+    if (cameraBlockId === blockId) closeCamera();
+    setImageBlocks(prev => prev.filter(b => b.id !== blockId));
   };
 
-  const addColour = () => {
-    setColours(prev => [...prev, { name: '', hex: '#6366F1', sizes: [], imagePreview: null, file: null }]);
-  };
-
-  const removeColour = (idx) => {
-    if (colours.length <= 1) return;
-    // Close camera if open for this colour
-    if (cameraIdx === idx) closeCamera();
-    setColours(prev => prev.filter((_, i) => i !== idx));
-  };
-
-  const handleImageChange = (idx, e) => {
+  const handleImageChange = (blockId, e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      setErrors(prev => ({ ...prev, [`image_${idx}`]: 'Max file size is 5MB' }));
+      setErrors(prev => ({ ...prev, [`image_${blockId}`]: 'Max file size is 5MB' }));
       return;
     }
     const url = URL.createObjectURL(file);
-    updateColour(idx, 'imagePreview', url);
-    updateColour(idx, 'file', file);
-    setErrors(prev => { const next = { ...prev }; delete next[`image_${idx}`]; return next; });
+    setImageBlocks(prev => prev.map(b => b.id === blockId ? { ...b, imagePreview: url, file } : b));
+    setErrors(prev => { const next = { ...prev }; delete next[`image_${blockId}`]; return next; });
+  };
+
+  // Colour Management inside an Image Block
+  const addColourToBlock = (blockId) => {
+    setImageBlocks(prev => prev.map(b => {
+      if (b.id !== blockId) return b;
+      return {
+        ...b,
+        colours: [...b.colours, { id: Date.now().toString() + 'c', name: '', hex: '#6366F1', sizes: [] }]
+      };
+    }));
+  };
+
+  const removeColourFromBlock = (blockId, colourId) => {
+    setImageBlocks(prev => prev.map(b => {
+      if (b.id !== blockId) return b;
+      if (b.colours.length <= 1) return b; // Keep at least one colour
+      return {
+        ...b,
+        colours: b.colours.filter(c => c.id !== colourId)
+      };
+    }));
+  };
+
+  const updateColour = (blockId, colourId, key, val) => {
+    setImageBlocks(prev => prev.map(b => {
+      if (b.id !== blockId) return b;
+      return {
+        ...b,
+        colours: b.colours.map(c => c.id === colourId ? { ...c, [key]: val } : c)
+      };
+    }));
+  };
+
+  const toggleColourSize = (blockId, colourId, size) => {
+    setImageBlocks(prev => prev.map(b => {
+      if (b.id !== blockId) return b;
+      return {
+        ...b,
+        colours: b.colours.map(c => {
+          if (c.id !== colourId) return c;
+          const sizes = c.sizes.includes(size) ? c.sizes.filter(s => s !== size) : [...c.sizes, size];
+          return { ...c, sizes };
+        })
+      };
+    }));
   };
 
   // Camera functions
-  const openCamera = async (idx) => {
+  const openCamera = async (blockId) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       streamRef.current = stream;
-      setCameraIdx(idx);
-      // Wait for next render so videoRef is available
+      setCameraBlockId(blockId);
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -129,12 +174,12 @@ export default function AddNewItem() {
       }, 100);
     } catch (err) {
       console.error('Camera access denied:', err);
-      setErrors(prev => ({ ...prev, [`image_${idx}`]: 'Camera access denied. Please allow camera permissions.' }));
+      setErrors(prev => ({ ...prev, [`image_${blockId}`]: 'Camera access denied. Please allow camera permissions.' }));
     }
   };
 
   const capturePhoto = () => {
-    if (!videoRef.current || cameraIdx === null) return;
+    if (!videoRef.current || !cameraBlockId) return;
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
@@ -144,8 +189,7 @@ export default function AddNewItem() {
       if (!blob) return;
       const file = new File([blob], `camera-capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
       const url = URL.createObjectURL(file);
-      updateColour(cameraIdx, 'imagePreview', url);
-      updateColour(cameraIdx, 'file', file);
+      setImageBlocks(prev => prev.map(b => b.id === cameraBlockId ? { ...b, imagePreview: url, file } : b));
       closeCamera();
     }, 'image/jpeg', 0.9);
   };
@@ -155,17 +199,19 @@ export default function AddNewItem() {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
     }
-    setCameraIdx(null);
+    setCameraBlockId(null);
   };
 
   const validate = () => {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Item name is required';
-    // Price is now OPTIONAL — no validation needed
     if (form.occasions.length === 0) errs.occasions = 'Select at least one occasion';
-    colours.forEach((c, i) => {
-      if (!c.name.trim()) errs[`colour_name_${i}`] = 'Colour name is required';
-      if (c.sizes.length === 0) errs[`colour_sizes_${i}`] = 'Select at least one size';
+    
+    imageBlocks.forEach((block, bIdx) => {
+      block.colours.forEach((c, cIdx) => {
+        if (!c.name.trim()) errs[`colour_name_${block.id}_${c.id}`] = 'Colour name is required';
+        if (c.sizes.length === 0) errs[`colour_sizes_${block.id}_${c.id}`] = 'Select at least one size';
+      });
     });
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -178,28 +224,34 @@ export default function AddNewItem() {
 
     try {
       // 1. Upload images first
-      const uploadedColours = await Promise.all(colours.map(async (c) => {
+      const uploadedBlocks = await Promise.all(imageBlocks.map(async (block) => {
         let finalUrl = '';
-        if (c.file) {
-          finalUrl = await DS.uploadImage(c.file);
+        let publicId = '';
+        if (block.file) {
+          const res = await DS.uploadImage(block.file);
+          finalUrl = res.url;
+          publicId = res.public_id;
         }
-        return { ...c, finalUrl };
+        return { ...block, finalUrl, publicId };
       }));
 
       // 2. Build colour × size variants
       const colourSizeVariants = [];
-      uploadedColours.forEach(c => {
-        c.sizes.forEach(size => {
-          colourSizeVariants.push({
-            colour_name: c.name,
-            colour_hex: c.hex,
-            size,
-            image_url: c.finalUrl || `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(c.name)}`,
+      uploadedBlocks.forEach(block => {
+        block.colours.forEach(c => {
+          c.sizes.forEach(size => {
+            colourSizeVariants.push({
+              colour_name: c.name,
+              colour_hex: c.hex,
+              size,
+              image_url: block.finalUrl || `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(c.name)}`,
+              cloudinary_public_id: block.publicId || null
+            });
           });
         });
       });
 
-      // 3. Save to database (price can be null)
+      // 3. Save to database
       await DS.addItem({
         ...form,
         price: form.price ? parseFloat(form.price) : null,
@@ -358,84 +410,41 @@ export default function AddNewItem() {
             )}
           </div>
 
-          {/* Colours & Sizes */}
+          {/* Image Blocks & Colours */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">Colours & Sizes</h2>
-              <button type="button" onClick={addColour} className="btn-ghost text-sm text-brand-600">
-                + Add Colour
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Images & Colours</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Upload a photo, then add all colours shown in that photo.</p>
+              </div>
+              <button type="button" onClick={addImageBlock} className="btn-ghost text-sm text-brand-600">
+                + Add Image Block
               </button>
             </div>
 
-            <div className="space-y-6">
-              {colours.map((colour, idx) => (
-                <div key={idx} className="border border-gray-100 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-gray-900">Colour {idx + 1}</h4>
-                    {colours.length > 1 && (
+            <div className="space-y-8">
+              {imageBlocks.map((block, bIdx) => (
+                <div key={block.id} className="border border-gray-200 rounded-xl p-5 bg-gray-50/50">
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                    <h3 className="font-bold text-gray-800">Image Block {bIdx + 1}</h3>
+                    {imageBlocks.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => removeColour(idx)}
-                        className="text-sm text-red-500 hover:text-red-700"
+                        onClick={() => removeImageBlock(block.id)}
+                        className="text-sm text-red-500 hover:text-red-700 font-medium"
                       >
-                        Remove
+                        Remove Entire Block
                       </button>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-4 mb-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Colour Name *</label>
-                      <input
-                        type="text"
-                        value={colour.name}
-                        onChange={(e) => updateColour(idx, 'name', e.target.value)}
-                        className={`input-field ${errors[`colour_name_${idx}`] ? 'border-red-400' : ''}`}
-                        placeholder="e.g., Navy Blue"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Hex Code</label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={colour.hex}
-                          onChange={(e) => updateColour(idx, 'hex', e.target.value)}
-                          className="w-12 h-12 rounded-lg cursor-pointer border-0"
-                        />
-                        <input
-                          type="text"
-                          value={colour.hex}
-                          onChange={(e) => updateColour(idx, 'hex', e.target.value)}
-                          className="input-field flex-1"
-                          placeholder="#4F46E5"
-                        />
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="mb-3">
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Available Sizes *</label>
-                    <div className="flex flex-wrap gap-2">
-                      {SIZES.map(size => (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => toggleColourSize(idx, size)}
-                          className={`size-pill ${colour.sizes.includes(size) ? 'size-pill-selected' : 'size-pill-available'}`}
-                        >
-                          {size === 'free_size' ? 'Free Size' : size}
-                        </button>
-                      ))}
-                    </div>
-                    {errors[`colour_sizes_${idx}`] && <p className="text-red-500 text-xs mt-1">{errors[`colour_sizes_${idx}`]}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1">Image</label>
+                  {/* Image Upload for this block */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Item Image *</label>
 
                     {/* Camera Modal */}
-                    {cameraIdx === idx && (
-                      <div className="mb-3 rounded-xl overflow-hidden border-2 border-brand-400 bg-black relative">
+                    {cameraBlockId === block.id && (
+                      <div className="mb-3 rounded-xl overflow-hidden border-2 border-brand-400 bg-black relative max-w-sm mx-auto">
                         <video ref={videoRef} className="w-full aspect-[4/3] object-cover" autoPlay playsInline muted />
                         <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-3">
                           <button
@@ -458,48 +467,128 @@ export default function AddNewItem() {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-3">
-                      {colour.imagePreview && (
-                        <div className="w-16 h-20 rounded-lg overflow-hidden bg-gray-100">
-                          <img src={colour.imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                    <div className="flex items-start gap-4">
+                      {block.imagePreview ? (
+                        <div className="w-32 h-40 rounded-xl overflow-hidden border border-gray-200 shadow-sm shrink-0">
+                          <img src={block.imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-32 h-40 rounded-xl border border-dashed border-gray-300 bg-white flex flex-col items-center justify-center text-gray-400 shrink-0">
+                          <svg className="w-8 h-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span className="text-xs">No Image</span>
                         </div>
                       )}
 
-                      {/* Upload from file */}
-                      <label className="flex-1 flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-brand-400 hover:bg-brand-50/50 transition-all">
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          onChange={(e) => handleImageChange(idx, e)}
-                          className="hidden"
-                        />
-                        <div className="text-center">
-                          <svg className="w-6 h-6 text-gray-400 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <div className="flex-1 flex flex-col gap-2">
+                        <label className="flex items-center justify-center px-4 py-2 border-2 border-dashed border-gray-200 bg-white rounded-lg cursor-pointer hover:border-brand-400 hover:bg-brand-50/50 transition-all text-sm font-medium text-gray-600">
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(e) => handleImageChange(block.id, e)}
+                            className="hidden"
+                          />
+                          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                           </svg>
-                          <span className="text-xs text-gray-500">Upload JPG/PNG</span>
-                        </div>
-                      </label>
+                          {block.imagePreview ? 'Change Photo' : 'Upload Photo'}
+                        </label>
 
-                      {/* Camera button */}
-                      {cameraIdx !== idx && (
-                        <button
-                          type="button"
-                          onClick={() => openCamera(idx)}
-                          className="flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-brand-400 hover:bg-brand-50/50 transition-all"
-                        >
-                          <div className="text-center">
-                            <svg className="w-6 h-6 text-gray-400 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        {cameraBlockId !== block.id && (
+                          <button
+                            type="button"
+                            onClick={() => openCamera(block.id)}
+                            className="flex items-center justify-center px-4 py-2 border-2 border-dashed border-gray-200 bg-white rounded-lg cursor-pointer hover:border-brand-400 hover:bg-brand-50/50 transition-all text-sm font-medium text-gray-600"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
-                            <span className="text-xs text-gray-500">Camera</span>
-                          </div>
-                        </button>
-                      )}
+                            Take Photo
+                          </button>
+                        )}
+                        {errors[`image_${block.id}`] && <p className="text-red-500 text-xs">{errors[`image_${block.id}`]}</p>}
+                      </div>
                     </div>
-                    {errors[`image_${idx}`] && <p className="text-red-500 text-xs mt-1">{errors[`image_${idx}`]}</p>}
                   </div>
+
+                  {/* Colours for this block */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-semibold text-gray-700">Available Colours in this Photo</label>
+                      <button type="button" onClick={() => addColourToBlock(block.id)} className="text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 px-3 py-1.5 rounded-full">
+                        + Add Colour
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {block.colours.map((colour, cIdx) => (
+                        <div key={colour.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm relative">
+                          {block.colours.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeColourFromBlock(block.id, colour.id)}
+                              className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 rounded-md transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 pr-8">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">Colour Name *</label>
+                              <input
+                                type="text"
+                                value={colour.name}
+                                onChange={(e) => updateColour(block.id, colour.id, 'name', e.target.value)}
+                                className={`input-field ${errors[`colour_name_${block.id}_${colour.id}`] ? 'border-red-400' : ''}`}
+                                placeholder="e.g., Navy Blue"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">Hex Code</label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="color"
+                                  value={colour.hex}
+                                  onChange={(e) => updateColour(block.id, colour.id, 'hex', e.target.value)}
+                                  className="w-10 h-10 rounded-lg cursor-pointer border-0 shrink-0"
+                                />
+                                <input
+                                  type="text"
+                                  value={colour.hex}
+                                  onChange={(e) => updateColour(block.id, colour.id, 'hex', e.target.value)}
+                                  className="input-field flex-1"
+                                  placeholder="#4F46E5"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">Available Sizes *</label>
+                            <div className="flex flex-wrap gap-2">
+                              {SIZES.map(size => (
+                                <button
+                                  key={size}
+                                  type="button"
+                                  onClick={() => toggleColourSize(block.id, colour.id, size)}
+                                  className={`size-pill ${colour.sizes.includes(size) ? 'size-pill-selected' : 'size-pill-available'}`}
+                                >
+                                  {size === 'free_size' ? 'Free Size' : size}
+                                </button>
+                              ))}
+                            </div>
+                            {errors[`colour_sizes_${block.id}_${colour.id}`] && <p className="text-red-500 text-xs mt-1">{errors[`colour_sizes_${block.id}_${colour.id}`]}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                 </div>
               ))}
             </div>
@@ -554,10 +643,10 @@ export default function AddNewItem() {
 
           {/* Submit */}
           <div className="flex items-center gap-4">
-            <button type="submit" disabled={isSubmitting} className="btn-primary">
+            <button type="submit" disabled={isSubmitting} className="btn-primary py-3">
               {isSubmitting ? 'Uploading & Saving...' : 'Add Item to Catalog'}
             </button>
-            <button type="button" onClick={() => navigate('/admin/inventory')} className="btn-secondary">
+            <button type="button" onClick={() => navigate('/admin/inventory')} className="btn-secondary py-3">
               Cancel
             </button>
           </div>

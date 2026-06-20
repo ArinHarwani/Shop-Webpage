@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS public.item_variants (
   colour_hex TEXT NOT NULL DEFAULT '#000000',
   size TEXT NOT NULL,
   image_url TEXT DEFAULT '',
+  cloudinary_public_id TEXT,
   status TEXT NOT NULL DEFAULT 'available',
   sold_at TIMESTAMPTZ
 );
