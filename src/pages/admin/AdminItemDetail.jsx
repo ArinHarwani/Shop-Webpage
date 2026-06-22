@@ -64,8 +64,6 @@ export default function AdminItemDetail() {
     // Collect all public_ids
     const publicIds = [...new Set(item.variants.map(v => v.cloudinary_public_id).filter(Boolean))];
     
-    console.log(`[Delete Item] Found ${publicIds.length} Cloudinary public_ids from ${item.variants.length} variants:`, publicIds);
-    
     if (publicIds.length > 0) {
       const result = await DS.deleteCloudinaryImages(publicIds);
       if (result !== true && !result?.success) {

@@ -690,14 +690,10 @@ export async function uploadImage(file) {
   formData.append('file', file);
   formData.append('upload_preset', 'shop_products_upload');
 
-  console.log('[uploadImage] Uploading to Cloudinary...', { fileName: file.name, fileSize: file.size, fileType: file.type });
-
   const res = await fetch('https://api.cloudinary.com/v1_1/dvdxdqnie/image/upload', {
     method: 'POST',
     body: formData,
   });
-
-  console.log('[uploadImage] Cloudinary response status:', res.status);
 
   if (!res.ok) {
     const err = await res.json();
@@ -706,7 +702,6 @@ export async function uploadImage(file) {
   }
 
   const data = await res.json();
-  console.log('[uploadImage] Success! secure_url:', data.secure_url?.substring(0, 80), 'public_id:', data.public_id);
   return { url: data.secure_url, public_id: data.public_id };
 }
 
@@ -721,7 +716,6 @@ export async function deleteCloudinaryImages(publicIds) {
   }
   
   try {
-    console.log("Calling Edge Function to delete Cloudinary images:", publicIds);
     const { data, error } = await supabase.functions.invoke('delete-cloudinary-image', {
       body: { publicIds }
     });
@@ -736,7 +730,6 @@ export async function deleteCloudinaryImages(publicIds) {
       return { success: false, error: `Cloudinary API returned failure: ${JSON.stringify(data)}` };
     }
     
-    console.log("Cloudinary deletion successful:", data.results);
     return { success: true, results: data.results };
   } catch (err) {
     console.error("Failed to invoke Edge Function:", err);

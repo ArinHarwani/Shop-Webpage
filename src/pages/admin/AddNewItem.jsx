@@ -227,16 +227,13 @@ export default function AddNewItem() {
 
     try {
       // 1. Upload images first
-      console.log('[AddNewItem] Starting upload for', imageBlocks.length, 'image block(s)');
       const uploadedBlocks = await Promise.all(imageBlocks.map(async (block, idx) => {
         let finalUrl = '';
         let publicId = '';
         if (block.file) {
-          console.log(`[AddNewItem] Uploading block ${idx + 1}, file: ${block.file.name} (${(block.file.size / 1024).toFixed(1)}KB)`);
           const res = await DS.uploadImage(block.file);
           finalUrl = res.url;
           publicId = res.public_id;
-          console.log(`[AddNewItem] Upload success. URL: ${finalUrl}, public_id: ${publicId}`);
         } else {
           console.warn(`[AddNewItem] Block ${idx + 1} has no file to upload!`);
         }
@@ -258,8 +255,6 @@ export default function AddNewItem() {
           });
         });
       });
-
-      console.log('[AddNewItem] Built', colourSizeVariants.length, 'variants. Sample image_url:', colourSizeVariants[0]?.image_url?.substring(0, 60));
 
       // 3. Save to database
       await DS.addItem({
