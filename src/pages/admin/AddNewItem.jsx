@@ -239,7 +239,19 @@ export default function AddNewItem() {
       });
     });
     setErrors(errs);
-    return Object.keys(errs).length === 0;
+    
+    if (Object.keys(errs).length > 0) {
+      // Scroll to the first error
+      setTimeout(() => {
+        const firstErrorNode = document.querySelector('.text-red-500, .border-red-400');
+        if (firstErrorNode) {
+          firstErrorNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      return false;
+    }
+    
+    return true;
   };
 
   const handleSubmit = async (e) => {
@@ -473,7 +485,11 @@ export default function AddNewItem() {
                       e.preventDefault();
                       e.stopPropagation();
                       const file = e.dataTransfer.files?.[0];
-                      if (file && file.type.startsWith('image/')) {
+                      if (!file) {
+                        setErrors(prev => ({ ...prev, [`image_${block.id}`]: 'Could not read image from drag. Try copy-pasting or use the upload button.' }));
+                        return;
+                      }
+                      if (file.type.startsWith('image/')) {
                         if (file.size > 5 * 1024 * 1024) {
                           setErrors(prev => ({ ...prev, [`image_${block.id}`]: 'Max file size is 5MB' }));
                           return;
@@ -481,6 +497,8 @@ export default function AddNewItem() {
                         const url = URL.createObjectURL(file);
                         setImageBlocks(prev => prev.map(b => b.id === block.id ? { ...b, imagePreview: url, file } : b));
                         setErrors(prev => { const next = { ...prev }; delete next[`image_${block.id}`]; return next; });
+                      } else {
+                        setErrors(prev => ({ ...prev, [`image_${block.id}`]: 'Only image files are allowed.' }));
                       }
                     }}
                   >

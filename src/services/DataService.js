@@ -19,6 +19,14 @@ function emit(table) {
   bus.dispatchEvent(new CustomEvent('change', { detail: { table } }));
 }
 
+// Listen to storage events to sync across tabs without Supabase
+window.addEventListener('storage', (e) => {
+  if (e.key && e.key.startsWith('dm_')) {
+    const table = e.key.replace('dm_', '');
+    emit(table);
+  }
+});
+
 // ─── localStorage helpers ────────────────────────────────────────────
 function load(key, fallback = []) {
   try {
@@ -216,7 +224,7 @@ export function getItems(filters = {}) {
     });
   }
 
-  // Attach variant summaries
+  // Attach variant summaries and sort by newest first
   return items.map(item => {
     const iv = variants.filter(v => v.item_id === item.id);
     const allSold = iv.length > 0 && iv.every(v => v.status === 'sold');
@@ -224,7 +232,7 @@ export function getItems(filters = {}) {
     const sizes = [...new Set(iv.map(v => v.size))];
     const isNew = item.is_new_arrival && daysSince(item.created_at) <= 7;
     return { ...item, variants: iv, allSold, colours, sizes, isNew };
-  });
+  }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 }
 
 export function getItemById(id) {
