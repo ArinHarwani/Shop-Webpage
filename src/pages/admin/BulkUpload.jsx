@@ -115,11 +115,11 @@ export default function BulkUpload() {
     setStep('review');
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     setStep('importing');
     let imported = 0;
 
-    validRows.forEach(row => {
+    for (const row of validRows) {
       const colourSizeVariants = [];
       row.colours.forEach(colour => {
         row.sizes.forEach(size => {
@@ -132,20 +132,24 @@ export default function BulkUpload() {
         });
       });
 
-      DS.addItem({
-        name: row.item_name.trim(),
-        type: row.type,
-        occasions: row.occasions,
-        price: row.price,
-        fabric: (row.fabric || '').trim(),
-        godown_number: (row.godown_number || '').trim(),
-        rack_number: (row.rack_number || '').trim(),
-        shelf: (row.shelf || '').trim(),
-        internal_notes: (row.internal_notes || '').trim(),
-        colourSizeVariants,
-      });
-      imported++;
-    });
+      try {
+        await DS.addItem({
+          name: row.item_name.trim(),
+          type: row.type,
+          occasions: row.occasions,
+          price: row.price,
+          fabric: (row.fabric || '').trim(),
+          godown_number: (row.godown_number || '').trim(),
+          rack_number: (row.rack_number || '').trim(),
+          shelf: (row.shelf || '').trim(),
+          internal_notes: (row.internal_notes || '').trim(),
+          colourSizeVariants,
+        });
+        imported++;
+      } catch (err) {
+        console.error("Failed to import row:", row.item_name, err);
+      }
+    }
 
     setImportResults({ imported, skipped: errors.length });
     setStep('done');

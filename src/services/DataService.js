@@ -272,12 +272,18 @@ export async function addItem(data) {
     created_at: now,
     updated_at: now,
   };
-  items.push(item);
-  save('items', items);
-  if (supabase) await supabase.from('items').insert(item);
 
+  // 1. Try to save item to Supabase first if active
+  if (supabase) {
+    const { error } = await supabase.from('items').insert(item);
+    if (error) {
+      console.error("Supabase insert error (items):", error);
+      throw new Error(`Database error: ${error.message || 'Failed to insert item'}`);
+    }
+  }
+
+  // 2. Prepare variants
   const newVariants = [];
-  // Create variants from colours × sizes
   if (data.colourSizeVariants && data.colourSizeVariants.length > 0) {
     data.colourSizeVariants.forEach(v => {
       newVariants.push({
@@ -293,9 +299,26 @@ export async function addItem(data) {
       });
     });
   }
-  variants.push(...newVariants);
-  save('item_variants', variants);
-  if (supabase && newVariants.length > 0) await supabase.from('item_variants').insert(newVariants);
+
+  // 3. Try to save variants to Supabase
+  if (supabase && newVariants.length > 0) {
+    const { error } = await supabase.from('item_variants').insert(newVariants);
+    if (error) {
+      console.error("Supabase insert error (item_variants):", error);
+      // Attempt clean up of the created item in Supabase to maintain consistency
+      await supabase.from('items').delete().eq('id', id).catch(err => console.error("Failed to rollback item insertion:", err));
+      throw new Error(`Database error: ${error.message || 'Failed to insert item variants'}`);
+    }
+  }
+
+  // 4. If Supabase succeeded (or is not used), commit to localStorage
+  items.push(item);
+  save('items', items);
+
+  if (newVariants.length > 0) {
+    variants.push(...newVariants);
+    save('item_variants', variants);
+  }
   
   emit('items');
   return item;
