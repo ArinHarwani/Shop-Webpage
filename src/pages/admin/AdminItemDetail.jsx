@@ -28,6 +28,7 @@ export default function AdminItemDetail() {
     setItem(loaded);
     if (loaded) {
       setEditForm({
+        name: loaded.name || '',
         godown_number: loaded.godown_number || '',
         rack_number: loaded.rack_number || '',
         shelf: loaded.shelf || '',
@@ -262,6 +263,20 @@ export default function AdminItemDetail() {
             </div>
 
             <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Item Name</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="input-field mt-1"
+                    placeholder="e.g., Floral Wrap Dress"
+                  />
+                ) : (
+                  <p className="text-gray-900 mt-1">{item.name || '—'}</p>
+                )}
+              </div>
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Godown Number</label>
                 {isEditing ? (

@@ -56,6 +56,28 @@ export default function AddNewItem() {
     };
   }, []);
 
+  useEffect(() => {
+    const handlePaste = (e) => {
+      const file = e.clipboardData?.files?.[0];
+      if (file && file.type.startsWith('image/')) {
+        setImageBlocks(prev => {
+          let targetBlock = prev.find(b => !b.file && !b.imagePreview);
+          if (!targetBlock) targetBlock = prev[prev.length - 1];
+          
+          if (file.size > 5 * 1024 * 1024) {
+             setErrors(ePrev => ({ ...ePrev, [`image_${targetBlock.id}`]: 'Max file size is 5MB' }));
+             return prev;
+          }
+          const url = URL.createObjectURL(file);
+          setErrors(ePrev => { const next = { ...ePrev }; delete next[`image_${targetBlock.id}`]; return next; });
+          return prev.map(b => b.id === targetBlock.id ? { ...b, imagePreview: url, file } : b);
+        });
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, []);
+
   const updateForm = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
   const toggleOccasion = (occ) => {
@@ -444,8 +466,25 @@ export default function AddNewItem() {
                   </div>
 
                   {/* Image Upload for this block */}
-                  <div className="mb-6">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Item Image *</label>
+                  <div 
+                    className="mb-6 p-2 -m-2 rounded-xl border-2 border-transparent hover:border-dashed hover:border-brand-300 transition-colors"
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file && file.type.startsWith('image/')) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          setErrors(prev => ({ ...prev, [`image_${block.id}`]: 'Max file size is 5MB' }));
+                          return;
+                        }
+                        const url = URL.createObjectURL(file);
+                        setImageBlocks(prev => prev.map(b => b.id === block.id ? { ...b, imagePreview: url, file } : b));
+                        setErrors(prev => { const next = { ...prev }; delete next[`image_${block.id}`]; return next; });
+                      }
+                    }}
+                  >
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Item Image (Drag & Drop or Paste) *</label>
 
                     {/* Camera Modal */}
                     {cameraBlockId === block.id && (
@@ -497,7 +536,7 @@ export default function AddNewItem() {
                           <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                           </svg>
-                          {block.imagePreview ? 'Change Photo' : 'Upload Photo'}
+                          {block.imagePreview ? 'Change Photo' : 'Upload / Drop Photo'}
                         </label>
 
                         {cameraBlockId !== block.id && (
