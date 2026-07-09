@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { SessionProvider } from './contexts/SessionContext';
 import { AdminProvider, AdminRoute } from './contexts/AdminContext';
+import FloatingShortlistButton from './components/FloatingShortlistButton';
 
 // Customer Pages
 import WelcomeScreen from './pages/customer/WelcomeScreen';
@@ -35,6 +36,9 @@ export default function App() {
   return (
     <SessionProvider>
       <AdminProvider>
+        {/* Floating shortlist button — rendered globally, hides itself on admin/welcome */}
+        {appMode !== 'admin' && <FloatingShortlistButton />}
+
         <Routes>
           {/* Customer Portal */}
           {appMode !== 'admin' && (

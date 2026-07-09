@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Header from '../../components/Header';
 import FilterBar from '../../components/FilterBar';
 import ItemCard from '../../components/ItemCard';
@@ -8,16 +9,48 @@ import { useSession } from '../../contexts/SessionContext';
 
 const ITEMS_PER_PAGE = 24;
 
+// Skeleton card placeholder
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden border border-stone/60 shadow-card">
+      <div className="aspect-[3/4] skeleton" />
+      <div className="p-4 space-y-2">
+        <div className="skeleton h-3 w-16 rounded-full" />
+        <div className="skeleton h-4 w-3/4 rounded" />
+        <div className="skeleton h-4 w-1/2 rounded" />
+        <div className="flex gap-1.5 mt-3">
+          <div className="skeleton w-6 h-6 rounded-full" />
+          <div className="skeleton w-6 h-6 rounded-full" />
+          <div className="skeleton w-6 h-6 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CatalogGrid() {
   const { trackActivity } = useSession();
-  const [filters, setFilters] = useState({ type: null, occasion: 'All', collection: 'All', sizes: [], colours: [] });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialType = searchParams.get('type') || null;
+
+  const [filters, setFilters] = useState({
+    type: initialType,
+    occasion: 'All',
+    collection: 'All',
+    sizes: [],
+    colours: [],
+  });
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem('dm_view_mode') || 'swipe');
+  const [isLoading, setIsLoading] = useState(!!initialType); // show skeleton on first load if type pre-set
+  const [viewMode] = useState('grid'); // always grid, swipe is an in-grid feature
 
+  // Sync URL type param on initial load
   useEffect(() => {
-    localStorage.setItem('dm_view_mode', viewMode);
-  }, [viewMode]);
+    if (initialType) {
+      setFilters(f => ({ ...f, type: initialType }));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Listen for data changes
   useEffect(() => {
@@ -31,6 +64,17 @@ export default function CatalogGrid() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, refreshKey]);
 
+  // Simulate skeleton delay only on type change (data is from localStorage, fast)
+  const loadingTimer = useRef(null);
+  useEffect(() => {
+    if (filters.type) {
+      setIsLoading(true);
+      clearTimeout(loadingTimer.current);
+      loadingTimer.current = setTimeout(() => setIsLoading(false), 400);
+    }
+    return () => clearTimeout(loadingTimer.current);
+  }, [filters.type]);
+
   const paginatedItems = allItems.slice(0, visibleCount);
   const hasMore = visibleCount < allItems.length;
 
@@ -38,6 +82,10 @@ export default function CatalogGrid() {
     setFilters(newFilters);
     setVisibleCount(ITEMS_PER_PAGE);
     trackActivity();
+    // Sync type to URL
+    if (newFilters.type) {
+      setSearchParams({ type: newFilters.type }, { replace: true });
+    }
   };
 
   const handleLoadMore = () => {
@@ -45,96 +93,93 @@ export default function CatalogGrid() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-ivory">
       <Header />
       <FilterBar filters={filters} onFilterChange={handleFilterChange} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Results count & Toggle */}
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-sm text-gray-500">
-            {viewMode === 'grid' ? (
-              <>Showing <span className="font-semibold text-gray-900">{paginatedItems.length}</span> of{' '}</>
-            ) : null}
-            <span className="font-semibold text-gray-900">{allItems.length}</span> items
-          </p>
-          
-          <div className="flex bg-gray-200/80 rounded-xl p-1 shadow-inner">
-            <button
-              onClick={() => setViewMode('swipe')}
-              className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-lg transition-all duration-300 ${
-                viewMode === 'swipe' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-              Swipe
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-lg transition-all duration-300 ${
-                viewMode === 'grid' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-              Grid
-            </button>
-          </div>
-        </div>
+      <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6">
 
-        {/* Content */}
-        {!filters.type ? (
-          <div className="text-center py-24">
-            <div className="w-20 h-20 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-10 h-10 text-brand-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        {/* No type selected */}
+        {!filters.type && (
+          <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-up">
+            <div className="w-20 h-20 bg-stone rounded-3xl flex items-center justify-center mx-auto mb-5">
+              <svg className="w-10 h-10 text-dust" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">Select a Category</h3>
-            <p className="text-gray-500">Please choose a category from the filters above to view items</p>
+            <h3 className="font-display text-2xl text-charcoal font-semibold mb-2">Select a Category</h3>
+            <p className="text-slate text-base">Choose a category from the filters above to browse the collection</p>
           </div>
-        ) : allItems.length === 0 ? (
-          <div className="text-center py-24">
-            <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">No items found</h3>
-            <p className="text-gray-500">Try adjusting your filters</p>
-          </div>
-        ) : viewMode === 'swipe' ? (
-          <SwipeMode items={allItems} />
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {paginatedItems.map((item, idx) => (
-              <div
-                key={item.id}
-                className="animate-fade-in"
-                style={{ animationDelay: `${(idx % ITEMS_PER_PAGE) * 50}ms` }}
-              >
-                <ItemCard item={item} priority={idx < 4} />
-              </div>
+        )}
+
+        {/* Loading skeleton */}
+        {filters.type && isLoading && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <SkeletonCard key={i} />
             ))}
           </div>
         )}
 
-
-        {/* Load More Pagination */}
-        {viewMode === 'grid' && hasMore && (
-          <div className="flex justify-center mt-12 mb-8">
-            <button
-              onClick={handleLoadMore}
-              className="px-8 py-3 bg-white border-2 border-brand-100 text-brand-600 font-semibold rounded-xl hover:border-brand-300 hover:bg-brand-50 transition-all duration-300 shadow-sm"
-            >
-              Load More Items
-            </button>
+        {/* Empty state */}
+        {filters.type && !isLoading && allItems.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-up">
+            <div className="w-20 h-20 bg-stone rounded-3xl flex items-center justify-center mx-auto mb-5">
+              <svg className="w-10 h-10 text-dust" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="font-display text-2xl text-charcoal font-semibold mb-2">Nothing here yet</h3>
+            <p className="text-slate text-base max-w-xs">
+              No items in this category right now — ask our staff or try a different filter.
+            </p>
           </div>
         )}
+
+        {/* Grid */}
+        {filters.type && !isLoading && allItems.length > 0 && (
+          <>
+            {/* Results count */}
+            <div className="flex items-center justify-between mb-5">
+              <p className="text-sm text-slate">
+                <span className="font-semibold text-charcoal">{allItems.length}</span> items
+                {visibleCount < allItems.length && (
+                  <span> · showing {paginatedItems.length}</span>
+                )}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+              {paginatedItems.map((item, idx) => (
+                <div
+                  key={item.id}
+                  className="animate-fade-up"
+                  style={{ animationDelay: `${(idx % ITEMS_PER_PAGE) * 40}ms`, animationFillMode: 'both' }}
+                >
+                  <ItemCard item={item} priority={idx < 6} />
+                </div>
+              ))}
+            </div>
+
+            {/* Load More */}
+            {hasMore && (
+              <div className="flex justify-center mt-10 mb-6">
+                <button
+                  onClick={handleLoadMore}
+                  className="px-8 py-3.5 bg-white border border-stone text-charcoal font-semibold rounded-xl hover:border-accent hover:text-accent hover:bg-accent-light transition-all duration-250 shadow-card text-sm"
+                >
+                  Load More · {allItems.length - visibleCount} remaining
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </main>
+
+      {/* Bottom padding so FAB doesn't overlap last card */}
+      <div className="h-24" />
     </div>
   );
 }

@@ -770,14 +770,14 @@ export async function deleteCloudinaryImages(publicIds) {
 
 
 export function getOptimizedImageUrl(url, width = 400, quality = 80) {
-  if (!url || !url.includes('res.cloudinary.com')) return url; 
-  
-  // Cloudinary URLs format: https://res.cloudinary.com/<cloud_name>/image/upload/v123...
-  // Insert transformations after /upload/
+  if (!url || !url.includes('res.cloudinary.com')) return url;
+
   if (url.includes('/upload/')) {
     const parts = url.split('/upload/');
-    // Check if there are already transformations (we assume standard unsigned uploads don't have them in the base secure_url)
-    return `${parts[0]}/upload/c_limit,w_${width},q_${quality}/${parts[1]}`;
+    // Support 'auto' quality → use q_auto,f_auto (best Cloudinary practice)
+    const q = quality === 'auto' ? 'q_auto,f_auto' : `q_${quality}`;
+    return `${parts[0]}/upload/c_limit,w_${width},${q}/${parts[1]}`;
   }
   return url;
 }
+

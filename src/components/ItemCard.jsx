@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import * as DS from '../services/DataService';
 
@@ -7,39 +7,114 @@ const TYPE_LABELS = {
   coord_set: 'Coord Set', kurti: 'Kurti', other: 'Others',
 };
 
+// Signature swatch strip — pill-shaped with selected colour name label
+function SwatchStrip({ colours, variants, selectedIdx, onSelect }) {
+  if (!colours || colours.length === 0) return null;
+  const selected = colours[selectedIdx];
+
+  return (
+    <div
+      className="flex items-center gap-1.5"
+      onClick={(e) => e.preventDefault()}
+    >
+      <div className="flex items-center gap-1">
+        {colours.slice(0, 5).map((c, idx) => {
+          const allVariantsForColour = (variants || []).filter(v => v.colour_hex === c.hex);
+          const isSold = allVariantsForColour.length > 0 && allVariantsForColour.every(v => v.status === 'sold');
+          const isSelected = idx === selectedIdx;
+          return (
+            <button
+              key={c.hex}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelect(idx); }}
+              title={c.name}
+              className={`transition-all duration-200 rounded-full border-2 flex-shrink-0 ${
+                isSelected
+                  ? 'w-5 h-5 border-accent ring-1 ring-accent ring-offset-1 scale-110'
+                  : 'w-4 h-4 border-stone/60 hover:border-dust hover:scale-110'
+              } ${isSold ? 'opacity-30' : ''}`}
+              style={{ backgroundColor: c.hex }}
+            />
+          );
+        })}
+        {colours.length > 5 && (
+          <span className="text-[10px] text-dust font-medium ml-0.5">+{colours.length - 5}</span>
+        )}
+      </div>
+      {/* Selected colour name — the signature detail */}
+      {selected && colours.length > 1 && (
+        <span className="text-[10px] text-slate capitalize font-medium leading-none truncate max-w-[80px]">
+          {selected.name}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Image with skeleton loader
+function ProductImage({ src, alt, priority }) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  const imgRef = useRef(null);
+
+  // Immediately mark as loaded if cached
+  React.useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalHeight !== 0) {
+      setLoaded(true);
+    }
+  }, [src]);
+
+  return (
+    <div className="relative w-full h-full">
+      {/* Skeleton */}
+      {!loaded && !error && (
+        <div className="absolute inset-0 skeleton" />
+      )}
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        loading={priority ? 'eager' : 'lazy'}
+        fetchpriority={priority ? 'high' : 'auto'}
+        decoding="async"
+        width={400}
+        height={533}
+        className={`w-full h-full object-cover transition-opacity duration-400 group-hover:scale-105 transition-transform duration-500 ${
+          loaded ? 'opacity-100' : 'opacity-0'
+        }`}
+        onLoad={() => setLoaded(true)}
+        onError={() => { setError(true); setLoaded(true); }}
+      />
+    </div>
+  );
+}
+
 export default function ItemCard({ item, priority = false }) {
   const [selectedColourIdx, setSelectedColourIdx] = useState(0);
   const colours = item.colours || [];
   const currentColour = colours[selectedColourIdx] || {};
-  const imageUrl = currentColour.image_url || `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(item.name)}`;
-
-  // Check if all variants for current colour are sold
-  const currentColourVariants = (item.variants || []).filter(
-    v => v.colour_hex === currentColour.hex
+  const imageUrl = DS.getOptimizedImageUrl(
+    currentColour.image_url || `https://placehold.co/400x533/E8E0D5/9B8E85?text=${encodeURIComponent(item.name)}`,
+    400,
+    'auto'
   );
-  const isCurrentColourSold = currentColourVariants.length > 0 && currentColourVariants.every(v => v.status === 'sold');
+  const fallbackUrl = `https://placehold.co/400x533/E8E0D5/9B8E85?text=${encodeURIComponent(item.name)}`;
 
   return (
     <Link
       to={`/item/${item.id}`}
-      className="group block bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+      className="lookbook-card group block no-select"
     >
-      {/* Image */}
-      <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
-        <img
-          src={DS.getOptimizedImageUrl(imageUrl, 400, 60)}
+      {/* Image — 3:4 aspect ratio */}
+      <div className="relative aspect-[3/4] overflow-hidden bg-stone/40">
+        <ProductImage
+          src={imageUrl}
           alt={item.name}
-          loading={priority ? 'eager' : 'lazy'}
-          fetchpriority={priority ? 'high' : 'auto'}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={(e) => {
-            e.target.src = `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(item.name)}`;
-          }}
+          priority={priority}
         />
 
         {/* NEW badge */}
         {item.isNew && !item.allSold && (
-          <span className="badge-new">NEW</span>
+          <span className="badge-new">New</span>
         )}
 
         {/* SOLD overlay */}
@@ -47,68 +122,56 @@ export default function ItemCard({ item, priority = false }) {
           <div className="badge-sold" />
         )}
 
-        {/* Price tag — hidden if no price set */}
+        {/* Price — bottom right glass pill */}
         {item.price > 0 && (
-          <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-lg">
-            <span className="text-lg font-bold text-gray-900">₹{item.price?.toLocaleString('en-IN')}</span>
+          <div className="absolute bottom-2.5 right-2.5 bg-white/95 backdrop-blur-sm rounded-lg px-2.5 py-1 shadow-sm">
+            <span className="text-sm font-bold text-charcoal">₹{item.price?.toLocaleString('en-IN')}</span>
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <div className="p-4">
+      {/* Card body */}
+      <div className="px-3.5 pt-3 pb-3.5">
         {/* Type tag */}
-        <span className="inline-block px-2.5 py-0.5 bg-brand-50 text-brand-700 text-xs font-semibold rounded-full mb-2">
+        <span className="text-[10px] font-semibold text-accent uppercase tracking-widest">
           {TYPE_LABELS[item.type] || item.type}
         </span>
 
         {/* Name */}
-        <h3 className="font-semibold text-gray-900 text-base leading-tight mb-3 group-hover:text-brand-700 transition-colors">
+        <h3 className="font-display text-[17px] text-charcoal font-medium leading-snug mt-0.5 mb-2.5 line-clamp-2 group-hover:text-accent transition-colors duration-200">
           {item.name}
         </h3>
 
-        {/* Colour chips */}
-        {colours.length > 1 && (
-          <div className="flex items-center gap-1.5 mb-2" onClick={(e) => e.preventDefault()}>
-            {colours.map((c, idx) => {
-              const allVariantsForColour = (item.variants || []).filter(v => v.colour_hex === c.hex);
-              const isSold = allVariantsForColour.length > 0 && allVariantsForColour.every(v => v.status === 'sold');
-              return (
-                <button
-                  key={c.hex}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedColourIdx(idx); }}
-                  title={c.name}
-                  className={`w-6 h-6 rounded-full border-2 transition-all duration-200 ${
-                    idx === selectedColourIdx
-                      ? 'ring-2 ring-brand-500 ring-offset-1 border-white'
-                      : 'border-gray-200'
-                  } ${isSold ? 'opacity-30' : ''}`}
-                  style={{ backgroundColor: c.hex }}
-                />
-              );
-            })}
-          </div>
-        )}
+        {/* Signature swatch strip */}
+        <SwatchStrip
+          colours={colours}
+          variants={item.variants}
+          selectedIdx={selectedColourIdx}
+          onSelect={setSelectedColourIdx}
+        />
 
-        {/* Size pills */}
+        {/* Size availability row */}
         {item.sizes && item.sizes.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {item.sizes.map(size => {
+          <div className="flex flex-wrap gap-1 mt-2.5">
+            {item.sizes.slice(0, 5).map(size => {
               const sizeVariants = (item.variants || []).filter(v => v.size === size);
               const isSold = sizeVariants.length > 0 && sizeVariants.every(v => v.status === 'sold');
               return (
                 <span
                   key={size}
-                  className={`px-2 py-0.5 text-xs font-medium rounded ${
+                  className={`text-[10px] font-medium px-1.5 py-0.5 rounded-sm ${
                     isSold
-                      ? 'bg-gray-50 text-gray-300 line-through'
-                      : 'bg-gray-100 text-gray-600'
+                      ? 'text-dust line-through'
+                      : 'text-slate'
                   }`}
                 >
                   {size === 'free_size' ? 'Free' : size}
                 </span>
               );
             })}
+            {item.sizes.length > 5 && (
+              <span className="text-[10px] text-dust">+{item.sizes.length - 5}</span>
+            )}
           </div>
         )}
       </div>

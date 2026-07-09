@@ -5,6 +5,7 @@
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
   }
 
   html {
@@ -14,23 +15,29 @@
   }
 
   body {
-    @apply bg-gray-50 text-gray-900 font-sans;
+    @apply bg-ivory text-charcoal font-sans;
     overscroll-behavior: none;
+  }
+
+  /* Prevent image drag in swipe mode */
+  img {
+    -webkit-user-drag: none;
+    user-select: none;
   }
 
   /* Custom scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
   }
   ::-webkit-scrollbar-track {
     @apply bg-transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
+    @apply bg-stone rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400;
+    @apply bg-dust;
   }
 
   /* Hide scrollbar for horizontal scroll containers */
@@ -44,146 +51,183 @@
 }
 
 @layer components {
-  /* Glass morphism card */
-  .glass-card {
-    @apply bg-white/80 backdrop-blur-lg border border-white/20 shadow-lg;
-  }
 
-  /* Gradient button */
+  /* ─── BUTTONS ───────────────────────────────────────── */
   .btn-primary {
-    @apply inline-flex items-center justify-center px-6 py-3 
-           bg-gradient-to-r from-brand-600 to-brand-700 
-           text-white font-semibold rounded-xl
-           shadow-lg shadow-brand-600/25
-           hover:shadow-xl hover:shadow-brand-600/30 
-           hover:from-brand-700 hover:to-brand-800
-           active:scale-[0.98]
+    @apply inline-flex items-center justify-center px-6 py-3
+           bg-accent text-white font-semibold rounded-xl
+           shadow-md
+           hover:bg-accent-dark
+           active:scale-[0.97]
            transition-all duration-200 ease-out
-           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg;
+           disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center px-6 py-3
-           bg-white text-brand-700 font-semibold rounded-xl
-           border-2 border-brand-200
-           hover:bg-brand-50 hover:border-brand-300
-           active:scale-[0.98]
+           bg-white text-charcoal font-semibold rounded-xl
+           border border-stone
+           hover:bg-ivory hover:border-dust
+           active:scale-[0.97]
            transition-all duration-200 ease-out;
   }
 
   .btn-danger {
     @apply inline-flex items-center justify-center px-6 py-3
-           bg-gradient-to-r from-red-500 to-red-600
-           text-white font-semibold rounded-xl
-           shadow-lg shadow-red-500/25
-           hover:shadow-xl hover:shadow-red-500/30
-           active:scale-[0.98]
+           bg-red-500 text-white font-semibold rounded-xl
+           shadow-md hover:bg-red-600
+           active:scale-[0.97]
            transition-all duration-200 ease-out;
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center px-4 py-2
-           text-gray-600 font-medium rounded-lg
-           hover:bg-gray-100 hover:text-gray-900
-           active:scale-[0.98]
+           text-slate font-medium rounded-lg
+           hover:bg-stone hover:text-charcoal
+           active:scale-[0.97]
            transition-all duration-200 ease-out;
   }
 
-  /* Form inputs */
+  /* ─── FORM INPUTS ───────────────────────────────────── */
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl border-2 border-gray-200
-           bg-white text-gray-900 
-           placeholder:text-gray-400
-           focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10
+    @apply w-full px-4 py-3 rounded-xl border border-stone
+           bg-white text-charcoal
+           placeholder:text-dust
+           focus:border-accent focus:ring-4 focus:ring-accent/10
            outline-none transition-all duration-200;
   }
 
   .select-field {
-    @apply w-full px-4 py-3 rounded-xl border-2 border-gray-200
-           bg-white text-gray-900 
-           focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10
+    @apply w-full px-4 py-3 rounded-xl border border-stone
+           bg-white text-charcoal
+           focus:border-accent focus:ring-4 focus:ring-accent/10
            outline-none transition-all duration-200 appearance-none
-           bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%236B7280%22%3E%3Cpath%20d%3D%22M7%2010l5%205%205-5H7z%22%2F%3E%3C%2Fsvg%3E')]
+           bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%236B6560%22%3E%3Cpath%20d%3D%22M7%2010l5%205%205-5H7z%22%2F%3E%3C%2Fsvg%3E')]
            bg-no-repeat bg-[position:right_12px_center] bg-[length:24px];
   }
 
-  /* Metric card in dashboard */
+  /* ─── ADMIN CARDS (untouched admin styles) ──────────── */
   .metric-card {
     @apply bg-white rounded-2xl p-6 border border-gray-100
            shadow-sm hover:shadow-md transition-shadow duration-300;
   }
 
-  /* Badge styles */
+  /* ─── BADGES ────────────────────────────────────────── */
   .badge-new {
-    @apply absolute top-3 left-3 px-3 py-1 bg-gradient-to-r from-emerald-500 to-emerald-600
-           text-white text-xs font-bold rounded-full shadow-lg shadow-emerald-500/30
-           uppercase tracking-wider z-10;
+    @apply absolute top-3 left-3 px-3 py-1
+           bg-charcoal text-ivory text-[10px] font-semibold
+           rounded-full uppercase tracking-widest z-10
+           shadow-sm;
   }
 
   .badge-sold {
-    @apply absolute inset-0 flex items-center justify-center z-10;
+    @apply absolute inset-0 flex items-center justify-center z-10
+           bg-charcoal/30 backdrop-blur-[2px];
   }
 
   .badge-sold::after {
-    content: 'SOLD';
-    @apply absolute px-8 py-2 bg-red-500/85 text-white font-bold text-lg
-           tracking-widest uppercase
-           -rotate-12 shadow-lg;
+    content: 'SOLD OUT';
+    @apply px-6 py-2 bg-charcoal/90 text-ivory font-semibold
+           text-sm tracking-widest uppercase rounded-full;
   }
 
-  /* Size pill */
+  /* ─── SIZE PILLS ─────────────────────────────────────── */
   .size-pill {
-    @apply px-3 py-1.5 rounded-lg text-sm font-medium 
-           border-2 cursor-pointer select-none
+    @apply px-3 py-2 rounded-lg text-sm font-medium
+           border cursor-pointer select-none
+           min-w-[44px] text-center
            transition-all duration-200;
   }
 
   .size-pill-available {
-    @apply border-gray-200 bg-white text-gray-700
-           hover:border-brand-500 hover:text-brand-700 hover:bg-brand-50;
+    @apply border-stone bg-white text-charcoal
+           hover:border-accent hover:text-accent hover:bg-accent-light;
   }
 
   .size-pill-selected {
-    @apply border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-600/25;
+    @apply border-accent bg-accent text-white shadow-sm;
   }
 
   .size-pill-sold {
-    @apply border-gray-100 bg-gray-50 text-gray-300 line-through cursor-not-allowed;
+    @apply border-stone/50 bg-ivory text-dust line-through cursor-not-allowed;
   }
 
-  /* Colour swatch */
+  /* ─── COLOUR SWATCHES ───────────────────────────────── */
   .colour-swatch {
-    @apply w-8 h-8 rounded-full border-2 border-white shadow-md cursor-pointer
-           ring-2 ring-transparent hover:ring-brand-400
+    @apply w-9 h-9 rounded-full border-2 border-white shadow cursor-pointer
+           ring-2 ring-transparent hover:ring-accent/40 hover:scale-110
            transition-all duration-200;
   }
 
   .colour-swatch-selected {
-    @apply ring-brand-600 ring-offset-2;
+    @apply ring-accent ring-offset-2 scale-110;
   }
 
   .colour-swatch-sold {
-    @apply opacity-30 cursor-not-allowed relative;
+    @apply opacity-30 cursor-not-allowed hover:scale-100 hover:ring-transparent;
   }
 
-  /* Filter chip */
+  /* ─── FILTER CHIPS ──────────────────────────────────── */
   .filter-chip {
     @apply px-4 py-2 rounded-full text-sm font-medium
-           border-2 cursor-pointer select-none
+           border cursor-pointer select-none whitespace-nowrap
            transition-all duration-200;
   }
 
   .filter-chip-inactive {
-    @apply border-gray-200 bg-white text-gray-600
-           hover:border-gray-300 hover:bg-gray-50;
+    @apply border-stone bg-white text-slate
+           hover:border-dust hover:text-charcoal hover:bg-stone/40;
   }
 
   .filter-chip-active {
-    @apply border-brand-600 bg-brand-600 text-white
-           shadow-md shadow-brand-600/20;
+    @apply border-accent bg-accent text-white
+           shadow-sm;
   }
 
-  /* Admin sidebar */
+  /* ─── LOOKBOOK CARD ─────────────────────────────────── */
+  .lookbook-card {
+    @apply bg-white rounded-2xl overflow-hidden
+           shadow-card border border-stone/60
+           hover:shadow-card-lg hover:-translate-y-0.5
+           active:scale-[0.98]
+           transition-all duration-300 ease-out;
+  }
+
+  /* ─── SKELETON SHIMMER ──────────────────────────────── */
+  .skeleton {
+    @apply bg-stone rounded;
+    background: linear-gradient(90deg, #E8E0D5 25%, #EDE7DF 50%, #E8E0D5 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  /* ─── FLOATING ACTION BUTTON (FAB) ─────────────────── */
+  .fab {
+    @apply fixed bottom-6 right-5 z-50
+           w-14 h-14 rounded-full
+           bg-accent text-white
+           flex items-center justify-center
+           shadow-fab
+           active:scale-95
+           transition-all duration-200;
+  }
+
+  .fab-pulse {
+    animation: pulseRing 0.5s ease-out forwards;
+  }
+
+  /* ─── SLIDE PANEL (Shortlist) ───────────────────────── */
+  .panel-overlay {
+    @apply fixed inset-0 bg-charcoal/30 backdrop-blur-sm z-40;
+  }
+
+  .panel-drawer {
+    @apply fixed top-0 right-0 bottom-0 z-50
+           w-full max-w-sm bg-white
+           shadow-panel flex flex-col;
+  }
+
+  /* ─── ADMIN SIDEBAR (unchanged) ─────────────────────── */
   .sidebar-link {
     @apply flex items-center gap-3 px-4 py-3 rounded-xl
            text-gray-600 font-medium
@@ -192,19 +236,85 @@
   }
 
   .sidebar-link-active {
-    @apply bg-brand-50 text-brand-700 font-semibold
-           shadow-sm;
+    @apply bg-brand-50 text-brand-700 font-semibold shadow-sm;
+  }
+
+  /* ─── GLASS CARD (admin) ─────────────────────────────── */
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-lg border border-white/20 shadow-lg;
   }
 }
 
 @layer utilities {
+  /* Gradient text — admin brand */
   .text-gradient {
     @apply bg-gradient-to-r from-brand-600 to-brand-800 bg-clip-text text-transparent;
   }
 
-  .shimmer-bg {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: shimmer 2s linear infinite;
+  /* Display serif for item names / headings */
+  .font-display {
+    font-family: 'Cormorant Garamond', Georgia, serif;
   }
+
+  /* Accent gradient text */
+  .text-accent-gradient {
+    background: linear-gradient(135deg, #B85C38, #D4795A);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Prevent all text selection in browsing UI */
+  .no-select {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Full-height minus header */
+  .h-catalog {
+    height: calc(100dvh - 60px);
+  }
+
+  /* Safe area padding for notched devices */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+}
+
+/* ─── Keyframes (outside @layer so they're always available) ─── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes pulseRing {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0   rgba(184,92,56,0.6); }
+  60%  { transform: scale(1.15); box-shadow: 0 0 0 10px rgba(184,92,56,0);  }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(184,92,56,0);   }
+}
+
+@keyframes fadeIn {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes fadeUp {
+  0%   { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes slideUp {
+  0%   { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes slideInRight {
+  0%   { opacity: 0; transform: translateX(100%); }
+  100% { opacity: 1; transform: translateX(0);    }
+}
+
+@keyframes bounceIn {
+  0%   { transform: scale(0.8); opacity: 0; }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1);   opacity: 1; }
 }

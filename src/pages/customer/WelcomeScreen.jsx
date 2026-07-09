@@ -3,78 +3,149 @@ import { useNavigate } from 'react-router-dom';
 import { useSession } from '../../contexts/SessionContext';
 import * as DS from '../../services/DataService';
 
+const CATEGORIES = [
+  { key: 'top',       label: 'Tops',        emoji: '👕' },
+  { key: 'kurti',     label: 'Kurtis',      emoji: '🪭' },
+  { key: 'long_dress',label: 'Long Dresses', emoji: '👗' },
+  { key: 'bottom',    label: 'Bottoms',     emoji: '👖' },
+  { key: 'coord_set', label: 'Coord Sets',  emoji: '✨' },
+  { key: 'shorts',    label: 'Shorts',      emoji: '🩳' },
+  { key: 'other',     label: 'Others',      emoji: '🛍️' },
+];
+
 export default function WelcomeScreen() {
   const [name, setName] = useState('');
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [phase, setPhase] = useState('name'); // 'name' | 'category'
+  const [isExiting, setIsExiting] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const navigate = useNavigate();
   const { startSession } = useSession();
   const settings = DS.getSettings();
 
-  const handleStart = async () => {
-    setIsAnimating(true);
+  const handleNameContinue = () => {
+    setPhase('category');
+  };
+
+  const handleCategorySelect = async (categoryKey) => {
+    setSelectedCategory(categoryKey);
+    setIsExiting(true);
     await startSession(name.trim());
-    setTimeout(() => navigate('/catalog'), 400);
+    setTimeout(() => navigate(`/catalog?type=${categoryKey}`), 350);
   };
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br from-brand-900 via-brand-800 to-brand-950 flex items-center justify-center p-6 cursor-pointer select-none transition-opacity duration-500 ${isAnimating ? 'opacity-0 scale-105' : 'opacity-100'}`}
-      onClick={handleStart}
+      className={`min-h-screen bg-ivory flex flex-col items-center justify-center transition-opacity duration-350 ${
+        isExiting ? 'opacity-0' : 'opacity-100'
+      }`}
     >
-      {/* Background decoration */}
+      {/* Decorative background texture */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-brand-400/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-600/5 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-stone/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-accent-light/60 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4" />
       </div>
 
-      <div className="relative text-center max-w-lg w-full animate-fade-in">
-        {/* Logo */}
-        <div className="w-24 h-24 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl border border-white/10">
-          <svg className="w-14 h-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
+      {phase === 'name' ? (
+        /* ── Phase 1: Name + Brand ─────────────────────────── */
+        <div className="relative z-10 text-center px-6 w-full max-w-sm animate-fade-up">
+          {/* Shop Identity */}
+          <div className="mb-8">
+            <div className="w-16 h-16 bg-charcoal rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-card">
+              <svg className="w-8 h-8 text-ivory" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </div>
+            <h1 className="font-display text-5xl text-charcoal font-semibold tracking-tight mb-2">
+              {settings.shopName || 'DressMirror'}
+            </h1>
+            <p className="text-slate text-base font-light">Your personal style catalog</p>
+          </div>
+
+          {/* Separator */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="flex-1 h-px bg-stone" />
+            <span className="text-dust text-xs uppercase tracking-widest">Browse Collection</span>
+            <div className="flex-1 h-px bg-stone" />
+          </div>
+
+          {/* Name input */}
+          <div className="mb-6" onClick={(e) => e.stopPropagation()}>
+            <label className="block text-left text-xs font-semibold text-slate uppercase tracking-wider mb-2">
+              Your name <span className="text-dust font-normal normal-case tracking-normal">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Priya"
+              className="w-full px-5 py-4 bg-white border border-stone rounded-2xl text-charcoal placeholder:text-dust text-base focus:border-accent focus:ring-4 focus:ring-accent/10 outline-none transition-all duration-200"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleNameContinue(); }}
+              autoComplete="off"
+            />
+          </div>
+
+          {/* CTA */}
+          <button
+            onClick={handleNameContinue}
+            className="w-full py-4 bg-charcoal text-ivory font-semibold text-base rounded-2xl shadow-card hover:bg-charcoal/90 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2"
+          >
+            Start Browsing
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          <p className="text-dust text-xs mt-4">Tap to begin · Session expires in 2 hours</p>
         </div>
 
-        {/* Shop name */}
-        <h1 className="text-6xl sm:text-7xl font-black text-white mb-4 tracking-tight">
-          {settings.shopName || 'DressMirror'}
-        </h1>
+      ) : (
+        /* ── Phase 2: Category Picker ──────────────────────── */
+        <div className="relative z-10 w-full max-w-2xl px-4 animate-fade-up">
+          {/* Greeting */}
+          <div className="text-center mb-6 px-2">
+            <p className="text-slate text-sm mb-1">
+              {name ? `Welcome, ${name}` : 'Welcome'}
+            </p>
+            <h2 className="font-display text-4xl sm:text-5xl text-charcoal font-semibold">
+              What are you looking for?
+            </h2>
+          </div>
 
-        <p className="text-xl text-brand-200 mb-12 font-light">
-          Virtual Outfit Catalog
-        </p>
+          {/* Category grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {CATEGORIES.map((cat, i) => (
+              <button
+                key={cat.key}
+                onClick={() => handleCategorySelect(cat.key)}
+                style={{ animationDelay: `${i * 60}ms` }}
+                className={`group relative bg-white border border-stone rounded-2xl p-5 text-left shadow-card
+                  hover:border-accent hover:shadow-card-lg hover:-translate-y-0.5
+                  active:scale-[0.97]
+                  transition-all duration-250 animate-fade-up
+                  ${selectedCategory === cat.key ? 'border-accent bg-accent-light scale-[0.97]' : ''}
+                `}
+              >
+                <span className="text-3xl mb-3 block">{cat.emoji}</span>
+                <p className="font-semibold text-charcoal text-base leading-tight">{cat.label}</p>
+                {/* Accent corner dot */}
+                <div className={`absolute top-3 right-3 w-2 h-2 rounded-full bg-accent transition-all duration-200 ${
+                  selectedCategory === cat.key ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+                }`} />
+              </button>
+            ))}
+          </div>
 
-        {/* Optional name input */}
-        <div
-          className="mb-8"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name (optional)"
-            className="w-full max-w-xs mx-auto block px-6 py-4 bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-2xl text-white placeholder:text-white/40 text-center text-lg font-medium focus:border-white/40 focus:ring-4 focus:ring-white/10 outline-none transition-all duration-300"
-            onKeyDown={(e) => { if (e.key === 'Enter') handleStart(); }}
-          />
+          {/* Back */}
+          <div className="text-center mt-5">
+            <button
+              onClick={() => setPhase('name')}
+              className="text-dust text-sm hover:text-slate transition-colors"
+            >
+              ← Go back
+            </button>
+          </div>
         </div>
-
-        {/* CTA */}
-        <button
-          onClick={(e) => { e.stopPropagation(); handleStart(); }}
-          className="inline-flex items-center gap-3 px-10 py-4 bg-white text-brand-700 font-bold text-lg rounded-2xl shadow-2xl shadow-black/20 hover:shadow-3xl hover:scale-105 active:scale-[0.98] transition-all duration-300 group"
-        >
-          Start Browsing
-          <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-          </svg>
-        </button>
-
-        <p className="mt-8 text-brand-300/60 text-sm animate-pulse-soft">
-          Tap anywhere to begin
-        </p>
-      </div>
+      )}
     </div>
   );
 }

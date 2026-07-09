@@ -8,6 +8,7 @@ export function SessionProvider({ children }) {
   const [sessionId, setSessionId] = useState(() => localStorage.getItem('dm_current_session'));
   const [shortlist, setShortlist] = useState([]);
   const [shortlistCount, setShortlistCount] = useState(0);
+  const [lastAddedAt, setLastAddedAt] = useState(null); // timestamp → triggers FAB pulse animation
   const navigate = useNavigate();
   const location = useLocation();
   const activityTimer = useRef(null);
@@ -64,8 +65,8 @@ export function SessionProvider({ children }) {
       const session = DS.getSession(sessionId);
       if (!session) return;
       const diff = Date.now() - new Date(session.last_active_at).getTime();
-      const TWO_HOURS = 2 * 60 * 60 * 1000;
-      if (diff >= TWO_HOURS) {
+      const ONE_HOUR = 1 * 60 * 60 * 1000;
+      if (diff >= ONE_HOUR) {
         DS.expireSession(sessionId);
         localStorage.removeItem('dm_current_session');
         setSessionId(null);
@@ -99,6 +100,9 @@ export function SessionProvider({ children }) {
     if (!sessionId) return null;
     trackActivity();
     const result = await DS.addToShortlist(sessionId, itemId, variantId);
+    if (result) {
+      setLastAddedAt(Date.now()); // triggers FAB pulse
+    }
     refreshShortlist();
     return result;
   }, [sessionId, trackActivity, refreshShortlist]);
@@ -118,6 +122,7 @@ export function SessionProvider({ children }) {
       sessionId,
       shortlist,
       shortlistCount,
+      lastAddedAt,
       startSession,
       endSession,
       addToShortlist,
