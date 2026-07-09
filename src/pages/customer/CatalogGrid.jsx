@@ -28,6 +28,46 @@ function SkeletonCard() {
   );
 }
 
+// Swipe / Grid toggle button
+function ViewToggle({ viewMode, onChange }) {
+  return (
+    <div className="flex items-center bg-white border border-stone rounded-xl p-0.5 shadow-sm">
+      <button
+        onClick={() => onChange('swipe')}
+        title="Swipe Mode"
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-sm font-medium transition-all duration-200 ${
+          viewMode === 'swipe'
+            ? 'bg-charcoal text-ivory shadow-sm'
+            : 'text-slate hover:text-charcoal'
+        }`}
+      >
+        {/* Card/swipe icon */}
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <rect x="4" y="3" width="11" height="15" rx="2" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          <rect x="9" y="6" width="11" height="15" rx="2" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="hidden sm:inline">Swipe</span>
+      </button>
+      <button
+        onClick={() => onChange('grid')}
+        title="Grid Mode"
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-sm font-medium transition-all duration-200 ${
+          viewMode === 'grid'
+            ? 'bg-charcoal text-ivory shadow-sm'
+            : 'text-slate hover:text-charcoal'
+        }`}
+      >
+        {/* Grid icon */}
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        </svg>
+        <span className="hidden sm:inline">Grid</span>
+      </button>
+    </div>
+  );
+}
+
 export default function CatalogGrid() {
   const { trackActivity } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -42,8 +82,9 @@ export default function CatalogGrid() {
   });
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [isLoading, setIsLoading] = useState(!!initialType); // show skeleton on first load if type pre-set
-  const [viewMode] = useState('grid'); // always grid, swipe is an in-grid feature
+  const [isLoading, setIsLoading] = useState(!!initialType);
+  // Swipe is the default view
+  const [viewMode, setViewMode] = useState('swipe');
 
   // Sync URL type param on initial load
   useEffect(() => {
@@ -64,7 +105,7 @@ export default function CatalogGrid() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, refreshKey]);
 
-  // Simulate skeleton delay only on type change (data is from localStorage, fast)
+  // Skeleton delay on type change
   const loadingTimer = useRef(null);
   useEffect(() => {
     if (filters.type) {
@@ -82,7 +123,6 @@ export default function CatalogGrid() {
     setFilters(newFilters);
     setVisibleCount(ITEMS_PER_PAGE);
     trackActivity();
-    // Sync type to URL
     if (newFilters.type) {
       setSearchParams({ type: newFilters.type }, { replace: true });
     }
@@ -115,11 +155,32 @@ export default function CatalogGrid() {
 
         {/* Loading skeleton */}
         {filters.type && isLoading && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
+          viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          ) : (
+            // Swipe skeleton — single centred card shape
+            <div className="flex flex-col items-center pt-4">
+              <div className="w-full max-w-sm">
+                <div className="skeleton h-1 w-full rounded-full mb-4" />
+                <div className="bg-white rounded-3xl overflow-hidden border border-stone/60 shadow-card-lg">
+                  <div className="aspect-[3/4] skeleton" />
+                  <div className="p-5 space-y-3">
+                    <div className="skeleton h-3 w-16 rounded-full" />
+                    <div className="skeleton h-7 w-2/3 rounded" />
+                    <div className="flex gap-2 mt-2">
+                      <div className="skeleton w-4 h-4 rounded-full" />
+                      <div className="skeleton w-4 h-4 rounded-full" />
+                    </div>
+                    <div className="skeleton h-11 w-full rounded-xl mt-2" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
         )}
 
         {/* Empty state */}
@@ -138,47 +199,57 @@ export default function CatalogGrid() {
           </div>
         )}
 
-        {/* Grid */}
+        {/* Content — Swipe or Grid */}
         {filters.type && !isLoading && allItems.length > 0 && (
           <>
-            {/* Results count */}
+            {/* Toolbar: item count + view toggle */}
             <div className="flex items-center justify-between mb-5">
               <p className="text-sm text-slate">
                 <span className="font-semibold text-charcoal">{allItems.length}</span> items
-                {visibleCount < allItems.length && (
-                  <span> · showing {paginatedItems.length}</span>
-                )}
               </p>
+              <ViewToggle viewMode={viewMode} onChange={setViewMode} />
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-              {paginatedItems.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className="animate-fade-up"
-                  style={{ animationDelay: `${(idx % ITEMS_PER_PAGE) * 40}ms`, animationFillMode: 'both' }}
-                >
-                  <ItemCard item={item} priority={idx < 6} />
-                </div>
-              ))}
-            </div>
-
-            {/* Load More */}
-            {hasMore && (
-              <div className="flex justify-center mt-10 mb-6">
-                <button
-                  onClick={handleLoadMore}
-                  className="px-8 py-3.5 bg-white border border-stone text-charcoal font-semibold rounded-xl hover:border-accent hover:text-accent hover:bg-accent-light transition-all duration-250 shadow-card text-sm"
-                >
-                  Load More · {allItems.length - visibleCount} remaining
-                </button>
+            {/* ── Swipe mode (default) ─────────────────── */}
+            {viewMode === 'swipe' && (
+              <div className="animate-fade-up">
+                <SwipeMode items={allItems} />
               </div>
+            )}
+
+            {/* ── Grid mode ────────────────────────────── */}
+            {viewMode === 'grid' && (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+                  {paginatedItems.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="animate-fade-up"
+                      style={{ animationDelay: `${(idx % ITEMS_PER_PAGE) * 40}ms`, animationFillMode: 'both' }}
+                    >
+                      <ItemCard item={item} priority={idx < 6} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Load More */}
+                {hasMore && (
+                  <div className="flex justify-center mt-10 mb-6">
+                    <button
+                      onClick={handleLoadMore}
+                      className="px-8 py-3.5 bg-white border border-stone text-charcoal font-semibold rounded-xl hover:border-accent hover:text-accent hover:bg-accent-light transition-all duration-200 shadow-card text-sm"
+                    >
+                      Load More · {allItems.length - visibleCount} remaining
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
       </main>
 
-      {/* Bottom padding so FAB doesn't overlap last card */}
+      {/* Bottom padding so FAB doesn't overlap */}
       <div className="h-24" />
     </div>
   );
