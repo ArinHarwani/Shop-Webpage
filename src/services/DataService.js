@@ -324,6 +324,44 @@ export async function addItem(data) {
   return item;
 }
 
+export async function addVariantsToItem(itemId, colourSizeVariants) {
+  const variants = load('item_variants');
+  const newVariants = [];
+  
+  if (colourSizeVariants && colourSizeVariants.length > 0) {
+    colourSizeVariants.forEach(v => {
+      newVariants.push({
+        id: uuidv4(),
+        item_id: itemId,
+        colour_name: v.colour_name,
+        colour_hex: v.colour_hex,
+        size: v.size,
+        image_url: v.image_url || `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(v.colour_name || 'Item')}`,
+        cloudinary_public_id: v.cloudinary_public_id || null,
+        status: 'available',
+        sold_at: null,
+      });
+    });
+  }
+
+  if (supabase && newVariants.length > 0) {
+    const { error } = await supabase.from('item_variants').insert(newVariants);
+    if (error) {
+      console.error("Supabase insert error (item_variants):", error);
+      throw new Error(`Database error: ${error.message || 'Failed to insert item variants'}`);
+    }
+  }
+
+  if (newVariants.length > 0) {
+    variants.push(...newVariants);
+    save('item_variants', variants);
+  }
+  
+  emit('item_variants');
+  emit('items');
+  return newVariants;
+}
+
 export async function updateItem(id, data) {
   const items = load('items');
   const idx = items.findIndex(i => i.id === id);
@@ -703,6 +741,17 @@ export function getSizeGuideData() {
         ['L', '38–40', '32–34', '40–42'],
         ['XL', '40–42', '34–36', '42–44'],
         ['XXL', '42–44', '36–38', '44–46'],
+      ],
+    },
+    'One Piece': {
+      headers: ['Size', 'Bust (in)', 'Waist (in)', 'Hip (in)', 'Length (in)'],
+      rows: [
+        ['XS', '32–34', '26–28', '34–36', '38'],
+        ['S', '34–36', '28–30', '36–38', '39'],
+        ['M', '36–38', '30–32', '38–40', '40'],
+        ['L', '38–40', '32–34', '40–42', '41'],
+        ['XL', '40–42', '34–36', '42–44', '42'],
+        ['XXL', '42–44', '36–38', '44–46', '43'],
       ],
     },
   };

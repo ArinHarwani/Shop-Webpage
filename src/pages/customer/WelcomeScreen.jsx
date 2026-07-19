@@ -7,6 +7,7 @@ const CATEGORIES = [
   { key: 'top',       label: 'Tops',        emoji: '👕' },
   { key: 'kurti',     label: 'Kurtis',      emoji: '🪭' },
   { key: 'long_dress',label: 'Long Dresses', emoji: '👗' },
+  { key: 'one_piece',label: 'One Piece', emoji: '👗' },
   { key: 'bottom',    label: 'Bottoms',     emoji: '👖' },
   { key: 'coord_set', label: 'Coord Sets',  emoji: '✨' },
   { key: 'shorts',    label: 'Shorts',      emoji: '🩳' },

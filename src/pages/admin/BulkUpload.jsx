@@ -6,7 +6,7 @@ const CSV_TEMPLATE = `item_name,type,occasion,sizes,colours,price,fabric,godown_
 "Floral Summer Dress",long_dress,"casual|festive","S|M|L|XL","Peach:#F4A261|Navy Blue:#264653",2499,Georgette,GD-1,R-3,A,"Supplier: FabIndia","peach_dress.jpg|navy_dress.jpg"
 "Cotton Office Kurti",kurti,"office|casual","S|M|L","White:#FAFAFA|Mint:#98D8C8",899,Cotton,GD-1,R-1,B,"","white_kurti.jpg|mint_kurti.jpg"`;
 
-const VALID_TYPES = ['top', 'bottom', 'shorts', 'long_dress', 'coord_set', 'kurti', 'other'];
+const VALID_TYPES = ['top', 'bottom', 'shorts', 'long_dress', 'one_piece', 'coord_set', 'kurti', 'other'];
 const VALID_OCCASIONS = ['casual', 'festive', 'office', 'party', 'wedding'];
 const VALID_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'free_size'];
 

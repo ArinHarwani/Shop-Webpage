@@ -6,6 +6,7 @@ import * as DS from '../../services/DataService';
 const TYPES = [
   { value: 'top', label: 'Top' }, { value: 'bottom', label: 'Bottom' },
   { value: 'shorts', label: 'Shorts' }, { value: 'long_dress', label: 'Long Dress' },
+  { value: 'one_piece', label: 'One Piece' },
   { value: 'coord_set', label: 'Coord Set' }, { value: 'kurti', label: 'Kurti' },
   { value: 'other', label: 'Others' },
 ];

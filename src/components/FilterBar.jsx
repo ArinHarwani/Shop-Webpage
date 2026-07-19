@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import * as DS from '../services/DataService';
 
 const TYPE_LABELS = {
-  top: 'Tops', bottom: 'Bottoms', shorts: 'Shorts', long_dress: 'Long Dress',
+  top: 'Tops', bottom: 'Bottoms', shorts: 'Shorts', long_dress: 'Long Dress', one_piece: 'One Piece',
   coord_set: 'Coord Sets', kurti: 'Kurtis', other: 'Others',
 };
 

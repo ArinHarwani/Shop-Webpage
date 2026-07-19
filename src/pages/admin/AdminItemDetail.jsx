@@ -6,8 +6,9 @@ import * as DS from '../../services/DataService';
 
 const TYPE_LABELS = {
   top: 'Top', bottom: 'Bottom', shorts: 'Shorts', long_dress: 'Long Dress',
-  coord_set: 'Coord Set', kurti: 'Kurti', other: 'Others',
+  one_piece: 'One Piece', coord_set: 'Coord Set', kurti: 'Kurti', other: 'Others',
 };
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'free_size'];
 
 export default function AdminItemDetail() {
   const { id } = useParams();
@@ -29,6 +30,7 @@ export default function AdminItemDetail() {
     if (loaded) {
       setEditForm({
         name: loaded.name || '',
+        type: loaded.type || 'other',
         godown_number: loaded.godown_number || '',
         rack_number: loaded.rack_number || '',
         shelf: loaded.shelf || '',
@@ -39,6 +41,16 @@ export default function AdminItemDetail() {
 
   const [isDeletingVariant, setIsDeletingVariant] = useState(false);
   const [variantToDelete, setVariantToDelete] = useState(null);
+
+  // Add New Variant State
+  const [isAddingVariant, setIsAddingVariant] = useState(false);
+  const [isUploadingVariant, setIsUploadingVariant] = useState(false);
+  const [addVariantError, setAddVariantError] = useState('');
+  const [newVariantBlock, setNewVariantBlock] = useState({
+    imagePreview: null,
+    file: null,
+    colours: [{ id: Date.now().toString() + 'c', name: '', hex: '#4F46E5', sizes: [] }]
+  });
 
   if (!item) {
     return (
@@ -122,6 +134,67 @@ export default function AdminItemDetail() {
     setRefreshKey(k => k + 1);
   };
 
+  const handleAddNewVariants = async () => {
+    setAddVariantError('');
+    if (!newVariantBlock.file && !newVariantBlock.imagePreview) {
+      setAddVariantError('Please select an image.');
+      return;
+    }
+    for (const c of newVariantBlock.colours) {
+      if (!c.name.trim()) return setAddVariantError('All colours must have a name.');
+      if (c.sizes.length === 0) return setAddVariantError(`Please select at least one size for ${c.name || 'a colour'}.`);
+    }
+
+    setIsUploadingVariant(true);
+    try {
+      let finalUrl = '';
+      let publicId = '';
+      if (newVariantBlock.file) {
+        const res = await DS.uploadImage(newVariantBlock.file);
+        finalUrl = res.url;
+        publicId = res.public_id;
+      }
+
+      const colourSizeVariants = [];
+      newVariantBlock.colours.forEach(c => {
+        c.sizes.forEach(size => {
+          colourSizeVariants.push({
+            colour_name: c.name,
+            colour_hex: c.hex,
+            size,
+            image_url: finalUrl || `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(c.name)}`,
+            cloudinary_public_id: publicId || null
+          });
+        });
+      });
+
+      await DS.addVariantsToItem(id, colourSizeVariants);
+      setIsAddingVariant(false);
+      setNewVariantBlock({
+        imagePreview: null,
+        file: null,
+        colours: [{ id: Date.now().toString() + 'c', name: '', hex: '#4F46E5', sizes: [] }]
+      });
+      setRefreshKey(k => k + 1);
+    } catch (err) {
+      setAddVariantError(err.message || 'Failed to add variants');
+    } finally {
+      setIsUploadingVariant(false);
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setAddVariantError('Max file size is 5MB');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setNewVariantBlock(prev => ({ ...prev, imagePreview: url, file }));
+    setAddVariantError('');
+  };
+
   // Group variants by colour
   const variantsByColour = {};
   item.variants.forEach(v => {
@@ -190,7 +263,98 @@ export default function AdminItemDetail() {
 
           {/* Variant Management */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Variants (Colour × Size)</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Variants (Colour × Size)</h2>
+              <button
+                onClick={() => setIsAddingVariant(!isAddingVariant)}
+                className="btn-ghost text-sm text-brand-600"
+              >
+                {isAddingVariant ? 'Cancel Adding' : '+ Add Image & Colours'}
+              </button>
+            </div>
+            
+            {isAddingVariant && (
+              <div className="mb-6 p-5 border border-brand-200 bg-brand-50 rounded-xl space-y-4">
+                <h3 className="font-bold text-brand-900">Add New Variants</h3>
+                {addVariantError && <p className="text-red-600 text-sm">{addVariantError}</p>}
+                
+                <div className="flex gap-4 items-start">
+                  {newVariantBlock.imagePreview ? (
+                    <img src={newVariantBlock.imagePreview} className="w-24 h-32 object-cover rounded-lg border border-gray-200" />
+                  ) : (
+                    <div className="w-24 h-32 bg-white rounded-lg border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400">No Image</div>
+                  )}
+                  <div>
+                    <label className="btn-secondary text-sm px-3 py-1.5 cursor-pointer inline-block mb-2">
+                      <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                      Upload Photo
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-gray-700">Colours</label>
+                    <button
+                      type="button"
+                      onClick={() => setNewVariantBlock(prev => ({
+                        ...prev, colours: [...prev.colours, { id: Date.now().toString() + 'c', name: '', hex: '#4F46E5', sizes: [] }]
+                      }))}
+                      className="text-xs font-medium text-brand-600 hover:text-brand-700 bg-white px-2 py-1 rounded"
+                    >
+                      + Add Colour
+                    </button>
+                  </div>
+                  {newVariantBlock.colours.map(c => (
+                    <div key={c.id} className="bg-white p-3 rounded-lg border border-gray-200 relative">
+                      {newVariantBlock.colours.length > 1 && (
+                        <button
+                          onClick={() => setNewVariantBlock(prev => ({ ...prev, colours: prev.colours.filter(col => col.id !== c.id) }))}
+                          className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                        >×</button>
+                      )}
+                      <div className="flex gap-3 mb-2 pr-6">
+                        <div className="flex-1">
+                          <input type="text" value={c.name} onChange={(e) => setNewVariantBlock(prev => ({
+                            ...prev, colours: prev.colours.map(col => col.id === c.id ? { ...col, name: e.target.value } : col)
+                          }))} placeholder="Colour Name" className="input-field py-1 px-2 text-sm" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={c.hex} onChange={(e) => setNewVariantBlock(prev => ({
+                            ...prev, colours: prev.colours.map(col => col.id === c.id ? { ...col, hex: e.target.value } : col)
+                          }))} className="w-8 h-8 rounded border-0 p-0 cursor-pointer" />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {SIZES.map(size => (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => setNewVariantBlock(prev => ({
+                              ...prev, colours: prev.colours.map(col => {
+                                if (col.id !== c.id) return col;
+                                const sizes = col.sizes.includes(size) ? col.sizes.filter(s => s !== size) : [...col.sizes, size];
+                                return { ...col, sizes };
+                              })
+                            }))}
+                            className={`px-2 py-0.5 text-xs rounded-full border ${c.sizes.includes(size) ? 'bg-brand-600 text-white border-brand-600' : 'bg-gray-50 text-gray-600 border-gray-200'}`}
+                          >
+                            {size === 'free_size' ? 'Free' : size}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-2">
+                  <button onClick={handleAddNewVariants} disabled={isUploadingVariant} className="btn-primary py-2 w-full">
+                    {isUploadingVariant ? 'Uploading...' : 'Save New Variants'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-6">
               {Object.values(variantsByColour).map(group => (
                 <div key={group.colour_hex} className="border border-gray-100 rounded-xl overflow-hidden">
@@ -275,6 +439,22 @@ export default function AdminItemDetail() {
                   />
                 ) : (
                   <p className="text-gray-900 mt-1">{item.name || '—'}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Item Category</label>
+                {isEditing ? (
+                  <select
+                    value={editForm.type}
+                    onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+                    className="select-field mt-1"
+                  >
+                    {Object.entries(TYPE_LABELS).map(([val, label]) => (
+                      <option key={val} value={val}>{label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-gray-900 mt-1">{TYPE_LABELS[item.type] || item.type}</p>
                 )}
               </div>
               <div>

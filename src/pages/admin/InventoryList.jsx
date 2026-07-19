@@ -4,7 +4,7 @@ import AdminLayout from '../../components/AdminLayout';
 import * as DS from '../../services/DataService';
 
 const TYPE_LABELS = {
-  top: 'Top', bottom: 'Bottom', shorts: 'Shorts', long_dress: 'Long Dress',
+  top: 'Top', bottom: 'Bottom', shorts: 'Shorts', long_dress: 'Long Dress', one_piece: 'One Piece',
   coord_set: 'Coord Set', kurti: 'Kurti', other: 'Others',
 };
 
