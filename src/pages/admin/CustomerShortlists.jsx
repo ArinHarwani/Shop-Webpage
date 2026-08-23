@@ -86,9 +86,11 @@ export default function CustomerShortlists() {
                       {/* Thumbnail */}
                       <div className="w-14 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                         <img
-                          src={entry.variant?.image_url}
+                          src={DS.getOptimizedImageUrl(entry.variant?.image_url, 140, 'auto')}
                           alt={entry.item?.name}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
                           onError={(e) => {
                             e.target.src = `https://placehold.co/140x160/EEF2FF/4F46E5?text=?`;
                           }}

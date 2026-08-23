@@ -184,9 +184,11 @@ export default function InventoryList() {
                         <Link to={`/admin/item/${item.id}`} className="flex items-center gap-3 group">
                           <div className="w-12 h-14 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                             <img
-                              src={item.colours?.[0]?.image_url}
+                              src={DS.getOptimizedImageUrl(item.colours?.[0]?.image_url, 120, 'auto')}
                               alt={item.name}
                               className="w-full h-full object-cover"
+                              loading="lazy"
+                              decoding="async"
                               onError={(e) => {
                                 e.target.src = `https://placehold.co/120x140/EEF2FF/4F46E5?text=?`;
                               }}

@@ -401,9 +401,11 @@ export default function AdminItemDetail() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="aspect-[4/5] bg-gray-100">
               <img
-                src={item.colours?.[0]?.image_url}
+                src={DS.getOptimizedImageUrl(item.colours?.[0]?.image_url, 600, 'auto')}
                 alt={item.name}
                 className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
                 onError={(e) => {
                   e.target.src = `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(item.name)}`;
                 }}

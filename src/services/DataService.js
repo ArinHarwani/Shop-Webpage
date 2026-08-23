@@ -818,15 +818,60 @@ export async function deleteCloudinaryImages(publicIds) {
 }
 
 
-export function getOptimizedImageUrl(url, width = 400, quality = 80) {
-  if (!url || !url.includes('res.cloudinary.com')) return url;
-
-  if (url.includes('/upload/')) {
-    const parts = url.split('/upload/');
-    // Support 'auto' quality → use q_auto,f_auto (best Cloudinary practice)
-    const q = quality === 'auto' ? 'q_auto,f_auto' : `q_${quality}`;
-    return `${parts[0]}/upload/c_limit,w_${width},${q}/${parts[1]}`;
+export function getOptimizedImageUrl(url, width = 500, quality = 'auto') {
+  if (!url || typeof url !== 'string' || !url.includes('res.cloudinary.com')) {
+    return url;
   }
-  return url;
+
+  let targetWidth = 500;
+  let targetQuality = 'auto';
+  let targetCrop = 'c_limit';
+
+  if (typeof width === 'object' && width !== null) {
+    targetWidth = width.width ?? 500;
+    targetQuality = width.quality ?? 'auto';
+    targetCrop = width.crop ?? 'c_limit';
+  } else {
+    targetWidth = width ?? 500;
+    targetQuality = quality ?? 'auto';
+  }
+
+  // Construct transformation parts:
+  // 1. f_auto: delivers modern AVIF/WebP to supported browsers (saves 50-80% file size)
+  // 2. q_auto: automatic perceptual quality compression
+  // 3. w_<width>, c_limit: right-size to UI dimensions without upscaling smaller assets
+  const transformList = ['f_auto'];
+
+  if (targetQuality === 'auto') {
+    transformList.push('q_auto');
+  } else if (typeof targetQuality === 'string' && targetQuality.startsWith('auto:')) {
+    transformList.push(`q_${targetQuality}`);
+  } else {
+    transformList.push(`q_${targetQuality}`);
+  }
+
+  if (targetWidth) {
+    transformList.push(`w_${targetWidth}`);
+    if (targetCrop) {
+      transformList.push(targetCrop);
+    }
+  }
+
+  const transformString = transformList.join(',');
+
+  const uploadPattern = '/image/upload/';
+  const uploadIndex = url.indexOf(uploadPattern);
+  if (uploadIndex === -1) {
+    return url;
+  }
+
+  const baseUrl = url.slice(0, uploadIndex + uploadPattern.length);
+  let rest = url.slice(uploadIndex + uploadPattern.length);
+
+  // Strip any previous transformation segments between /upload/ and /v<version>/ or asset path
+  rest = rest.replace(/^(?:(?:(?:f|q|w|h|c|g|dpr|fl|e|r|b|co|ar)_[a-zA-Z0-9_.:-]+,?)+\/)+/, '');
+
+  return `${baseUrl}${transformString}/${rest}`;
 }
+
 

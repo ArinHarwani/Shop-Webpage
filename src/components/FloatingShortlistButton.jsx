@@ -112,7 +112,7 @@ export default function FloatingShortlistButton() {
           ) : (
             <div className="divide-y divide-stone/50">
               {shortlist.map((entry) => {
-                const imgUrl = DS.getOptimizedImageUrl(entry.variant?.image_url, 200, 80);
+                const imgUrl = DS.getOptimizedImageUrl(entry.variant?.image_url, 150, 'auto');
                 return (
                   <div key={entry.id} className="flex items-center gap-3 p-4 hover:bg-ivory/60 transition-colors">
                     {/* Thumbnail */}
@@ -126,6 +126,8 @@ export default function FloatingShortlistButton() {
                           src={imgUrl}
                           alt={entry.item?.name}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
                           onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       ) : (
