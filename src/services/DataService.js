@@ -823,6 +823,9 @@ export function getOptimizedImageUrl(url, width = 500, quality = 'auto') {
     return url;
   }
 
+  // Strip any query strings (e.g. ?t=timestamp) to preserve Cloudinary CDN caching
+  const cleanUrl = url.split('?')[0];
+
   let targetWidth = 500;
   let targetQuality = 'auto';
   let targetCrop = 'c_limit';
@@ -839,7 +842,8 @@ export function getOptimizedImageUrl(url, width = 500, quality = 'auto') {
   // Construct transformation parts:
   // 1. f_auto: delivers modern AVIF/WebP to supported browsers (saves 50-80% file size)
   // 2. q_auto: automatic perceptual quality compression
-  // 3. w_<width>, c_limit: right-size to UI dimensions without upscaling smaller assets
+  // 3. dpr_auto: adapts to device pixel density without over-fetching
+  // 4. w_<width>, c_limit: right-size to UI dimensions without upscaling smaller assets
   const transformList = ['f_auto'];
 
   if (targetQuality === 'auto') {
@@ -849,6 +853,8 @@ export function getOptimizedImageUrl(url, width = 500, quality = 'auto') {
   } else {
     transformList.push(`q_${targetQuality}`);
   }
+
+  transformList.push('dpr_auto');
 
   if (targetWidth) {
     transformList.push(`w_${targetWidth}`);
@@ -860,13 +866,13 @@ export function getOptimizedImageUrl(url, width = 500, quality = 'auto') {
   const transformString = transformList.join(',');
 
   const uploadPattern = '/image/upload/';
-  const uploadIndex = url.indexOf(uploadPattern);
+  const uploadIndex = cleanUrl.indexOf(uploadPattern);
   if (uploadIndex === -1) {
-    return url;
+    return cleanUrl;
   }
 
-  const baseUrl = url.slice(0, uploadIndex + uploadPattern.length);
-  let rest = url.slice(uploadIndex + uploadPattern.length);
+  const baseUrl = cleanUrl.slice(0, uploadIndex + uploadPattern.length);
+  let rest = cleanUrl.slice(uploadIndex + uploadPattern.length);
 
   // Strip any previous transformation segments between /upload/ and /v<version>/ or asset path
   rest = rest.replace(/^(?:(?:(?:f|q|w|h|c|g|dpr|fl|e|r|b|co|ar)_[a-zA-Z0-9_.:-]+,?)+\/)+/, '');
