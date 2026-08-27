@@ -631,11 +631,16 @@ export function getAvailableFilterValues() {
 //  SETTINGS
 // ═════════════════════════════════════════════════════════════════════
 export function getSettings() {
-  return load('settings', {
+  const defaults = {
     shopName: 'DressMirror',
     deviceLabel: 'Tablet 1',
     adminPassword: 'admin123',
-  });
+    shopLat: 26.279653,
+    shopLng: 73.010635,
+    geofenceRadius: 150,
+  };
+  const stored = load('settings', {});
+  return { ...defaults, ...stored };
 }
 
 export async function updateSettings(data) {

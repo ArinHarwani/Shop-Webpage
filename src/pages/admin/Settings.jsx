@@ -11,10 +11,44 @@ export default function Settings() {
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [settingsSaved, setSettingsSaved] = useState(false);
 
+  const [locationDetecting, setLocationDetecting] = useState(false);
+  const [locationDetectMsg, setLocationDetectMsg] = useState('');
+
+  const handleDetectLocation = () => {
+    if (!('geolocation' in navigator)) {
+      setLocationDetectMsg('Geolocation is not supported by this browser.');
+      return;
+    }
+    setLocationDetecting(true);
+    setLocationDetectMsg('');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocationDetecting(false);
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        setSettings(prev => ({
+          ...prev,
+          shopLat: lat,
+          shopLng: lng,
+        }));
+        setLocationDetectMsg(`✓ Captured location: ${lat}, ${lng} (±${Math.round(pos.coords.accuracy)}m accuracy)`);
+        setTimeout(() => setLocationDetectMsg(''), 5000);
+      },
+      (err) => {
+        setLocationDetecting(false);
+        setLocationDetectMsg(`Could not retrieve location: ${err.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
   const handleSaveSettings = () => {
     DS.updateSettings({
       shopName: settings.shopName,
       deviceLabel: settings.deviceLabel,
+      shopLat: Number(settings.shopLat || 26.279653),
+      shopLng: Number(settings.shopLng || 73.010635),
+      geofenceRadius: Number(settings.geofenceRadius || 150),
     });
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 2000);
@@ -86,6 +120,101 @@ export default function Settings() {
               >
                 {settingsSaved ? '✓ Saved' : 'Save Settings'}
               </button>
+            </div>
+          </div>
+
+          {/* Store Location & Geofencing */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Store Location & Geofencing</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Restricts customer catalog access exclusively to devices physically in the boutique
+                </p>
+              </div>
+              <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-full">
+                Active
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Shop Latitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={settings.shopLat ?? 26.279653}
+                    onChange={(e) => setSettings(prev => ({ ...prev, shopLat: parseFloat(e.target.value) || '' }))}
+                    className="input-field"
+                    placeholder="26.279653"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">e.g. 26.279653 (Fever Profile Fashion)</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Shop Longitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={settings.shopLng ?? 73.010635}
+                    onChange={(e) => setSettings(prev => ({ ...prev, shopLng: parseFloat(e.target.value) || '' }))}
+                    className="input-field"
+                    placeholder="73.010635"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">e.g. 73.010635 (Sardarpura, Jodhpur)</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Allowed Radius (meters)</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="20"
+                    max="1000"
+                    step="5"
+                    value={settings.geofenceRadius ?? 150}
+                    onChange={(e) => setSettings(prev => ({ ...prev, geofenceRadius: parseInt(e.target.value, 10) || '' }))}
+                    className="input-field max-w-[180px]"
+                    placeholder="150"
+                  />
+                  <span className="text-sm text-gray-500 font-medium">meters around shop</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Indoor GPS typically drifts 20–50m. 150m is the recommended starting radius.
+                </p>
+              </div>
+
+              {/* Location helper detection */}
+              <div className="pt-2 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={handleDetectLocation}
+                  disabled={locationDetecting}
+                  className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"
+                >
+                  <svg className={`w-4 h-4 text-accent ${locationDetecting ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {locationDetecting ? 'Detecting GPS…' : '📍 Use Current Device Location'}
+                </button>
+
+                <button
+                  onClick={handleSaveSettings}
+                  className={`transition-all duration-300 ${settingsSaved ? 'bg-emerald-500 text-white px-6 py-3 rounded-xl font-semibold' : 'btn-primary'}`}
+                >
+                  {settingsSaved ? '✓ Saved' : 'Save Geofence'}
+                </button>
+              </div>
+
+              {locationDetectMsg && (
+                <div className={`p-3 rounded-xl text-xs ${locationDetectMsg.startsWith('✓') ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : 'bg-red-50 border border-red-200 text-red-600'}`}>
+                  {locationDetectMsg}
+                </div>
+              )}
             </div>
           </div>
 

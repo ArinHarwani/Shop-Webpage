@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { SessionProvider } from './contexts/SessionContext';
 import { AdminProvider, AdminRoute } from './contexts/AdminContext';
 import FloatingShortlistButton from './components/FloatingShortlistButton';
+import ShopGeofenceGate from './components/ShopGeofenceGate';
 
 // Customer Pages
 import WelcomeScreen from './pages/customer/WelcomeScreen';
@@ -22,6 +23,16 @@ import AddNewItem from './pages/admin/AddNewItem';
 import BulkUpload from './pages/admin/BulkUpload';
 import Settings from './pages/admin/Settings';
 
+// Customer layout gated by in-store geofence
+function CustomerLayout() {
+  return (
+    <ShopGeofenceGate>
+      <FloatingShortlistButton />
+      <Outlet />
+    </ShopGeofenceGate>
+  );
+}
+
 export default function App() {
   const appMode = import.meta.env.VITE_APP_MODE || 'both'; // 'customer', 'admin', or 'both'
 
@@ -36,20 +47,17 @@ export default function App() {
   return (
     <SessionProvider>
       <AdminProvider>
-        {/* Floating shortlist button — rendered globally, hides itself on admin/welcome */}
-        {appMode !== 'admin' && <FloatingShortlistButton />}
-
         <Routes>
           {/* Customer Portal */}
           {appMode !== 'admin' && (
-            <>
+            <Route element={<CustomerLayout />}>
               <Route path="/" element={<WelcomeScreen />} />
               <Route path="/catalog" element={<CatalogGrid />} />
               <Route path="/item/:id" element={<ItemDetail />} />
               <Route path="/shortlist" element={<Shortlist />} />
               <Route path="/size-guide" element={<SizeGuide />} />
               <Route path="/expired" element={<SessionExpired />} />
-            </>
+            </Route>
           )}
 
           {/* Admin Portal */}
