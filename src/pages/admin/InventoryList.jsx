@@ -3,9 +3,30 @@ import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import * as DS from '../../services/DataService';
 
+const FILTER_TYPES = {
+  top: 'Tops',
+  one_piece_dresses: 'One Piece & Dresses',
+  coord_ethnic: 'Coord Sets & Ethnic Fashion',
+  bottom: 'Bottoms',
+  other: 'Others',
+};
+
 const TYPE_LABELS = {
-  top: 'Top', bottom: 'Bottom', shorts: 'Shorts', long_dress: 'Long Dress', one_piece: 'One Piece',
-  coord_set: 'Coord Set', kurti: 'Kurti', other: 'Others',
+  top: 'Tops',
+  tops: 'Tops',
+  one_piece_dresses: 'One Piece & Dresses',
+  one_piece: 'One Piece & Dresses',
+  long_dress: 'One Piece & Dresses',
+  dress: 'One Piece & Dresses',
+  coord_ethnic: 'Coord Sets & Ethnic Fashion',
+  coord_set: 'Coord Sets & Ethnic Fashion',
+  traditional: 'Coord Sets & Ethnic Fashion',
+  kurti: 'Coord Sets & Ethnic Fashion',
+  bottom: 'Bottoms',
+  bottoms: 'Bottoms',
+  shorts: 'Bottoms',
+  other: 'Others',
+  others: 'Others',
 };
 
 export default function InventoryList() {
@@ -116,7 +137,7 @@ export default function InventoryList() {
             className="select-field w-auto min-w-[140px]"
           >
             <option value="All">All Types</option>
-            {Object.entries(TYPE_LABELS).map(([val, label]) => (
+            {Object.entries(FILTER_TYPES).map(([val, label]) => (
               <option key={val} value={val}>{label}</option>
             ))}
           </select>

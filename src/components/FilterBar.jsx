@@ -2,9 +2,20 @@ import React, { useState, useEffect } from 'react';
 import * as DS from '../services/DataService';
 
 const TYPE_LABELS = {
-  top: 'Tops', bottom: 'Bottoms', shorts: 'Shorts', long_dress: 'Long Dress', one_piece: 'One Piece',
-  coord_set: 'Coord Sets', kurti: 'Kurtis', other: 'Others',
+  top: 'Tops',
+  one_piece_dresses: 'One Piece & Dresses',
+  coord_ethnic: 'Coord Sets & Ethnic Fashion',
+  bottom: 'Bottoms',
+  other: 'Others',
 };
+
+function isCategoryActive(val, currentType) {
+  if (!currentType) return false;
+  if (currentType === val) return true;
+  const group = DS.CATEGORY_GROUPS?.[val];
+  if (group && group.includes(currentType)) return true;
+  return false;
+}
 
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size', 'free_size'];
 
@@ -54,17 +65,20 @@ export default function FilterBar({ filters, onFilterChange }) {
           {/* Category scroll strip */}
           <div className="flex-1 overflow-x-auto scrollbar-hide">
             <div className="flex gap-2 pb-0.5">
-              {Object.entries(TYPE_LABELS).map(([val, label]) => (
-                <button
-                  key={val}
-                  onClick={() => setFilter('type', val)}
-                  className={`filter-chip shrink-0 ${
-                    filters.type === val ? 'filter-chip-active' : 'filter-chip-inactive'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+              {Object.entries(TYPE_LABELS).map(([val, label]) => {
+                const active = isCategoryActive(val, filters.type);
+                return (
+                  <button
+                    key={val}
+                    onClick={() => setFilter('type', active ? null : val)}
+                    className={`filter-chip shrink-0 ${
+                      active ? 'filter-chip-active' : 'filter-chip-inactive'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
               {/* Clear all button inline if type selected */}
               {hasActiveFilters && (
                 <button

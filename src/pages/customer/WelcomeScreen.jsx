@@ -4,14 +4,11 @@ import { useSession } from '../../contexts/SessionContext';
 import * as DS from '../../services/DataService';
 
 const CATEGORIES = [
-  { key: 'top',       label: 'Tops',        emoji: '👕' },
-  { key: 'kurti',     label: 'Kurtis',      emoji: '🪭' },
-  { key: 'long_dress',label: 'Long Dresses', emoji: '👗' },
-  { key: 'one_piece',label: 'One Piece', emoji: '👗' },
-  { key: 'bottom',    label: 'Bottoms',     emoji: '👖' },
-  { key: 'coord_set', label: 'Coord Sets',  emoji: '✨' },
-  { key: 'shorts',    label: 'Shorts',      emoji: '🩳' },
-  { key: 'other',     label: 'Others',      emoji: '🛍️' },
+  { key: 'top',               label: 'Tops',                          emoji: '👕' },
+  { key: 'one_piece_dresses', label: 'One Piece & Dresses',           emoji: '👗' },
+  { key: 'coord_ethnic',      label: 'Coord Sets & Ethnic Fashion',   emoji: '✨' },
+  { key: 'bottom',            label: 'Bottoms',                       emoji: '👖' },
+  { key: 'other',             label: 'Others',                        emoji: '🛍️' },
 ];
 
 export default function WelcomeScreen() {
@@ -123,6 +120,7 @@ export default function WelcomeScreen() {
                   hover:border-accent hover:shadow-card-lg hover:-translate-y-0.5
                   active:scale-[0.97]
                   transition-all duration-250 animate-fade-up
+                  ${i === 4 ? 'col-span-2 sm:col-span-1' : ''}
                   ${selectedCategory === cat.key ? 'border-accent bg-accent-light scale-[0.97]' : ''}
                 `}
               >

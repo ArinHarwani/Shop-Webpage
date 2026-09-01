@@ -200,6 +200,24 @@ export async function deleteCollection(id) {
   emit('collections');
 }
 
+export const CATEGORY_GROUPS = {
+  top: ['top', 'tops'],
+  tops: ['top', 'tops'],
+  one_piece_dresses: ['one_piece', 'long_dress', 'dress', 'one_piece_dresses', 'dresses'],
+  dresses: ['one_piece', 'long_dress', 'dress', 'one_piece_dresses', 'dresses'],
+  one_piece: ['one_piece', 'long_dress', 'dress', 'one_piece_dresses', 'dresses'],
+  long_dress: ['one_piece', 'long_dress', 'dress', 'one_piece_dresses', 'dresses'],
+  coord_ethnic: ['coord_set', 'traditional', 'ethnic', 'kurti', 'coord_ethnic'],
+  coord_set: ['coord_set', 'traditional', 'ethnic', 'kurti', 'coord_ethnic'],
+  traditional: ['coord_set', 'traditional', 'ethnic', 'kurti', 'coord_ethnic'],
+  kurti: ['coord_set', 'traditional', 'ethnic', 'kurti', 'coord_ethnic'],
+  bottom: ['bottom', 'bottoms', 'shorts', 'denim', 'jeans'],
+  bottoms: ['bottom', 'bottoms', 'shorts', 'denim', 'jeans'],
+  shorts: ['bottom', 'bottoms', 'shorts', 'denim', 'jeans'],
+  other: ['other', 'others'],
+  others: ['other', 'others'],
+};
+
 // ═════════════════════════════════════════════════════════════════════
 //  ITEMS
 // ═════════════════════════════════════════════════════════════════════
@@ -208,7 +226,8 @@ export function getItems(filters = {}) {
   const variants = load('item_variants');
 
   if (filters.type && filters.type !== 'All') {
-    items = items.filter(i => i.type === filters.type);
+    const validTypes = CATEGORY_GROUPS[filters.type] || [filters.type];
+    items = items.filter(i => validTypes.includes(i.type));
   }
   if (filters.occasion && filters.occasion !== 'All') {
     items = items.filter(i => i.occasions && i.occasions.includes(filters.occasion));
