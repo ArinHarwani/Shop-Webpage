@@ -74,11 +74,16 @@ export default function AdminItemDetail() {
   };
 
   const handleDeleteItem = async () => {
-    // Collect all public_ids
-    const publicIds = [...new Set(item.variants.map(v => v.cloudinary_public_id).filter(Boolean))];
+    // Collect all variants with public_id and cloud_name
+    const targetsToDelete = item.variants
+      .filter(v => v.cloudinary_public_id)
+      .map(v => ({
+        publicId: v.cloudinary_public_id,
+        cloudName: v.cloudinary_cloud_name
+      }));
     
-    if (publicIds.length > 0) {
-      const result = await DS.deleteCloudinaryImages(publicIds);
+    if (targetsToDelete.length > 0) {
+      const result = await DS.deleteCloudinaryImages(targetsToDelete);
       if (result !== true && !result?.success) {
         const errorMsg = result?.error || 'Unknown error';
         alert(`Cloudinary deletion failed:\n\n${errorMsg}\n\nDatabase deletion aborted to prevent orphaned files.`);
@@ -102,6 +107,7 @@ export default function AdminItemDetail() {
     setIsDeletingVariant(true);
 
     const publicId = variantToDelete.image_public_id;
+    const cloudName = variantToDelete.cloudinary_cloud_name;
     const variantsToRemove = variantToDelete.variants;
     
     // Check if any other color in this item uses the same image
@@ -114,7 +120,7 @@ export default function AdminItemDetail() {
     }
 
     if (publicId && !isImageUsedElsewhere) {
-      const result = await DS.deleteCloudinaryImages([publicId]);
+      const result = await DS.deleteCloudinaryImages([{ publicId, cloudName }]);
       if (result !== true && !result?.success) {
         const errorMsg = result?.error || 'Unknown error';
         alert(`Cloudinary deletion failed:\n\n${errorMsg}\n\nColour removal aborted.`);
@@ -149,10 +155,12 @@ export default function AdminItemDetail() {
     try {
       let finalUrl = '';
       let publicId = '';
+      let cloudName = '';
       if (newVariantBlock.file) {
-        const res = await DS.uploadImage(newVariantBlock.file);
+        const res = await DS.uploadImage(newVariantBlock.file, item.type);
         finalUrl = res.url;
         publicId = res.public_id;
+        cloudName = res.cloud_name;
       }
 
       const colourSizeVariants = [];
@@ -163,7 +171,8 @@ export default function AdminItemDetail() {
             colour_hex: c.hex,
             size,
             image_url: finalUrl || `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(c.name)}`,
-            cloudinary_public_id: publicId || null
+            cloudinary_public_id: publicId || null,
+            cloudinary_cloud_name: cloudName || null,
           });
         });
       });
@@ -204,6 +213,7 @@ export default function AdminItemDetail() {
         colour_hex: v.colour_hex, 
         image_url: v.image_url, 
         image_public_id: v.cloudinary_public_id,
+        cloudinary_cloud_name: v.cloudinary_cloud_name,
         variants: [] 
       };
     }

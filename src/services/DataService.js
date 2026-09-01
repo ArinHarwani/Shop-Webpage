@@ -1,5 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@supabase/supabase-js';
+import { 
+  getCloudinaryConfigForCategory, 
+  DEFAULT_CLOUDINARY_ACCOUNT, 
+  getOptimizedImageUrl as formatCloudinaryOptimizedUrl 
+} from '../config/cloudinary';
 
 // ─── Supabase Client ─────────────────────────────────────────────────
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -228,7 +233,13 @@ export function getItems(filters = {}) {
   return items.map(item => {
     const iv = variants.filter(v => v.item_id === item.id);
     const allSold = iv.length > 0 && iv.every(v => v.status === 'sold');
-    const colours = [...new Map(iv.map(v => [v.colour_hex, { name: v.colour_name, hex: v.colour_hex, image_url: v.image_url }])).values()];
+    const colours = [...new Map(iv.map(v => [v.colour_hex, { 
+      name: v.colour_name, 
+      hex: v.colour_hex, 
+      image_url: v.image_url,
+      cloudinary_public_id: v.cloudinary_public_id || null,
+      cloudinary_cloud_name: v.cloudinary_cloud_name || null,
+    }])).values()];
     const sizes = [...new Set(iv.map(v => v.size))];
     const isNew = item.is_new_arrival && daysSince(item.created_at) <= 7;
     return { ...item, variants: iv, allSold, colours, sizes, isNew };
@@ -241,7 +252,13 @@ export function getItemById(id) {
   if (!item) return null;
   const variants = load('item_variants').filter(v => v.item_id === id);
   const allSold = variants.length > 0 && variants.every(v => v.status === 'sold');
-  const colours = [...new Map(variants.map(v => [v.colour_hex, { name: v.colour_name, hex: v.colour_hex, image_url: v.image_url }])).values()];
+  const colours = [...new Map(variants.map(v => [v.colour_hex, { 
+    name: v.colour_name, 
+    hex: v.colour_hex, 
+    image_url: v.image_url,
+    cloudinary_public_id: v.cloudinary_public_id || null,
+    cloudinary_cloud_name: v.cloudinary_cloud_name || null,
+  }])).values()];
   const sizes = [...new Set(variants.map(v => v.size))];
   const isNew = item.is_new_arrival && daysSince(item.created_at) <= 7;
   return { ...item, variants, allSold, colours, sizes, isNew };
@@ -284,6 +301,7 @@ export async function addItem(data) {
 
   // 2. Prepare variants
   const newVariants = [];
+  const defaultCloudName = getCloudinaryConfigForCategory(data.type).cloudName;
   if (data.colourSizeVariants && data.colourSizeVariants.length > 0) {
     data.colourSizeVariants.forEach(v => {
       newVariants.push({
@@ -294,6 +312,7 @@ export async function addItem(data) {
         size: v.size,
         image_url: v.image_url || `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(v.colour_name || 'Item')}`,
         cloudinary_public_id: v.cloudinary_public_id || null,
+        cloudinary_cloud_name: v.cloudinary_cloud_name || defaultCloudName,
         status: 'available',
         sold_at: null,
       });
@@ -326,6 +345,9 @@ export async function addItem(data) {
 
 export async function addVariantsToItem(itemId, colourSizeVariants) {
   const variants = load('item_variants');
+  const items = load('items');
+  const parentItem = items.find(i => i.id === itemId);
+  const defaultCloudName = getCloudinaryConfigForCategory(parentItem?.type).cloudName;
   const newVariants = [];
   
   if (colourSizeVariants && colourSizeVariants.length > 0) {
@@ -338,6 +360,7 @@ export async function addVariantsToItem(itemId, colourSizeVariants) {
         size: v.size,
         image_url: v.image_url || `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(v.colour_name || 'Item')}`,
         cloudinary_public_id: v.cloudinary_public_id || null,
+        cloudinary_cloud_name: v.cloudinary_cloud_name || defaultCloudName,
         status: 'available',
         sold_at: null,
       });
@@ -768,14 +791,18 @@ export function updateSizeGuide(data) {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-//  STORAGE (Images - Cloudinary)
+//  STORAGE (Images - Multi-Cloudinary)
 // ═════════════════════════════════════════════════════════════════════
-export async function uploadImage(file) {
+export async function uploadImage(file, category = '') {
+  const config = getCloudinaryConfigForCategory(category);
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', 'shop_products_upload');
+  formData.append('upload_preset', config.uploadPreset);
+  if (config.folder) {
+    formData.append('folder', config.folder);
+  }
 
-  const res = await fetch('https://api.cloudinary.com/v1_1/dvdxdqnie/image/upload', {
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`, {
     method: 'POST',
     body: formData,
   });
@@ -787,22 +814,44 @@ export async function uploadImage(file) {
   }
 
   const data = await res.json();
-  return { url: data.secure_url, public_id: data.public_id };
+  return { 
+    url: data.secure_url, 
+    public_id: data.public_id,
+    cloud_name: config.cloudName 
+  };
 }
 
-export async function deleteCloudinaryImages(publicIds) {
-  if (!publicIds || publicIds.length === 0) {
-    console.warn("deleteCloudinaryImages called with empty publicIds — cloudinary_public_id was likely never saved for these variants.");
-    return true; // Nothing to delete, don't block the DB deletion
+export async function deleteCloudinaryImages(targets) {
+  if (!targets || targets.length === 0) {
+    console.warn("deleteCloudinaryImages called with empty targets — cloudinary_public_id was likely never saved for these variants.");
+    return true; // Nothing to delete, don't block DB deletion
   }
   if (!supabase) {
     console.warn("Supabase not configured — skipping Cloudinary deletion.");
     return true;
   }
   
+  // Normalize targets into an array of objects: [{ publicId, cloudName }]
+  const items = (Array.isArray(targets) ? targets : [targets]).map(t => {
+    if (typeof t === 'string') {
+      return { publicId: t, cloudName: DEFAULT_CLOUDINARY_ACCOUNT.cloudName };
+    }
+    return {
+      publicId: t.publicId || t.image_public_id || t.cloudinary_public_id,
+      cloudName: t.cloudName || t.cloudinary_cloud_name || DEFAULT_CLOUDINARY_ACCOUNT.cloudName,
+    };
+  }).filter(t => Boolean(t.publicId));
+
+  if (items.length === 0) {
+    return true;
+  }
+  
   try {
     const { data, error } = await supabase.functions.invoke('delete-cloudinary-image', {
-      body: { publicIds }
+      body: { 
+        items,
+        publicIds: items.map(i => i.publicId) // backwards compatibility
+      }
     });
     
     if (error) {
@@ -822,67 +871,8 @@ export async function deleteCloudinaryImages(publicIds) {
   }
 }
 
-
-export function getOptimizedImageUrl(url, width = 500, quality = 'auto') {
-  if (!url || typeof url !== 'string' || !url.includes('res.cloudinary.com')) {
-    return url;
-  }
-
-  // Strip any query strings (e.g. ?t=timestamp) to preserve Cloudinary CDN caching
-  const cleanUrl = url.split('?')[0];
-
-  let targetWidth = 500;
-  let targetQuality = 'auto';
-  let targetCrop = 'c_limit';
-
-  if (typeof width === 'object' && width !== null) {
-    targetWidth = width.width ?? 500;
-    targetQuality = width.quality ?? 'auto';
-    targetCrop = width.crop ?? 'c_limit';
-  } else {
-    targetWidth = width ?? 500;
-    targetQuality = quality ?? 'auto';
-  }
-
-  // Construct transformation parts:
-  // 1. f_auto: delivers modern AVIF/WebP to supported browsers (saves 50-80% file size)
-  // 2. q_auto: automatic perceptual quality compression
-  // 3. dpr_auto: adapts to device pixel density without over-fetching
-  // 4. w_<width>, c_limit: right-size to UI dimensions without upscaling smaller assets
-  const transformList = ['f_auto'];
-
-  if (targetQuality === 'auto') {
-    transformList.push('q_auto');
-  } else if (typeof targetQuality === 'string' && targetQuality.startsWith('auto:')) {
-    transformList.push(`q_${targetQuality}`);
-  } else {
-    transformList.push(`q_${targetQuality}`);
-  }
-
-  transformList.push('dpr_auto');
-
-  if (targetWidth) {
-    transformList.push(`w_${targetWidth}`);
-    if (targetCrop) {
-      transformList.push(targetCrop);
-    }
-  }
-
-  const transformString = transformList.join(',');
-
-  const uploadPattern = '/image/upload/';
-  const uploadIndex = cleanUrl.indexOf(uploadPattern);
-  if (uploadIndex === -1) {
-    return cleanUrl;
-  }
-
-  const baseUrl = cleanUrl.slice(0, uploadIndex + uploadPattern.length);
-  let rest = cleanUrl.slice(uploadIndex + uploadPattern.length);
-
-  // Strip any previous transformation segments between /upload/ and /v<version>/ or asset path
-  rest = rest.replace(/^(?:(?:(?:f|q|w|h|c|g|dpr|fl|e|r|b|co|ar)_[a-zA-Z0-9_.:-]+,?)+\/)+/, '');
-
-  return `${baseUrl}${transformString}/${rest}`;
+export function getOptimizedImageUrl(urlOrVariant, width = 500, quality = 'auto') {
+  return formatCloudinaryOptimizedUrl(urlOrVariant, width, quality);
 }
 
 

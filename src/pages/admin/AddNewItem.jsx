@@ -261,18 +261,20 @@ export default function AddNewItem() {
     setIsSubmitting(true);
 
     try {
-      // 1. Upload images first
+      // 1. Upload images first (routed to category-specific Cloudinary account)
       const uploadedBlocks = await Promise.all(imageBlocks.map(async (block, idx) => {
         let finalUrl = '';
         let publicId = '';
+        let cloudName = '';
         if (block.file) {
-          const res = await DS.uploadImage(block.file);
+          const res = await DS.uploadImage(block.file, form.type);
           finalUrl = res.url;
           publicId = res.public_id;
+          cloudName = res.cloud_name;
         } else {
           console.warn(`[AddNewItem] Block ${idx + 1} has no file to upload!`);
         }
-        return { ...block, finalUrl, publicId };
+        return { ...block, finalUrl, publicId, cloudName };
       }));
 
       // 2. Build colour × size variants
@@ -285,7 +287,8 @@ export default function AddNewItem() {
               colour_hex: c.hex,
               size,
               image_url: block.finalUrl || `https://placehold.co/400x500/EEF2FF/4F46E5?text=${encodeURIComponent(c.name)}`,
-              cloudinary_public_id: block.publicId || null
+              cloudinary_public_id: block.publicId || null,
+              cloudinary_cloud_name: block.cloudName || null,
             });
           });
         });

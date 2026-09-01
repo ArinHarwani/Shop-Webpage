@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS public.item_variants (
   size TEXT NOT NULL,
   image_url TEXT DEFAULT '',
   cloudinary_public_id TEXT,
+  cloudinary_cloud_name TEXT DEFAULT 'dvdxdqnie',
   status TEXT NOT NULL DEFAULT 'available',
   sold_at TIMESTAMPTZ
 );
