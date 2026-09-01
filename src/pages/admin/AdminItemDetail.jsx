@@ -4,9 +4,29 @@ import AdminLayout from '../../components/AdminLayout';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import * as DS from '../../services/DataService';
 
+const EDIT_TYPES = [
+  { value: 'top', label: 'Tops' },
+  { value: 'one_piece', label: 'One Piece & Dresses' },
+  { value: 'coord_set', label: 'Coord Sets & Ethnic Fashion' },
+  { value: 'bottom', label: 'Bottoms' },
+  { value: 'other', label: 'Others' },
+];
+
 const TYPE_LABELS = {
-  top: 'Top', bottom: 'Bottom', shorts: 'Shorts', long_dress: 'Long Dress',
-  one_piece: 'One Piece', coord_set: 'Coord Set', kurti: 'Kurti', other: 'Others',
+  top: 'Tops',
+  tops: 'Tops',
+  bottom: 'Bottoms',
+  bottoms: 'Bottoms',
+  shorts: 'Shorts',
+  long_dress: 'Long Dress',
+  one_piece: 'One Piece',
+  one_piece_dresses: 'One Piece & Dresses',
+  coord_set: 'Coord Set',
+  coord_ethnic: 'Coord Sets & Ethnic Fashion',
+  traditional: 'Ethnic & Traditional',
+  kurti: 'Kurti',
+  other: 'Others',
+  others: 'Others',
 };
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'free_size'];
 
@@ -461,7 +481,7 @@ export default function AdminItemDetail() {
                     onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
                     className="select-field mt-1"
                   >
-                    {Object.entries(TYPE_LABELS).map(([val, label]) => (
+                    {EDIT_TYPES.map(({ value: val, label }) => (
                       <option key={val} value={val}>{label}</option>
                     ))}
                   </select>

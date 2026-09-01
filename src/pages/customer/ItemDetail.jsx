@@ -6,8 +6,20 @@ import { useSession } from '../../contexts/SessionContext';
 import * as DS from '../../services/DataService';
 
 const TYPE_LABELS = {
-  top: 'Top', bottom: 'Bottom', shorts: 'Shorts', long_dress: 'Long Dress', one_piece: 'One Piece',
-  coord_set: 'Coord Set', kurti: 'Kurti', other: 'Others',
+  top: 'Tops',
+  tops: 'Tops',
+  bottom: 'Bottoms',
+  bottoms: 'Bottoms',
+  shorts: 'Shorts',
+  long_dress: 'Long Dress',
+  one_piece: 'One Piece',
+  one_piece_dresses: 'One Piece & Dresses',
+  coord_set: 'Coord Set',
+  coord_ethnic: 'Coord Sets & Ethnic',
+  traditional: 'Ethnic & Traditional',
+  kurti: 'Kurti',
+  other: 'Others',
+  others: 'Others',
 };
 
 // Cross-fading image with skeleton
