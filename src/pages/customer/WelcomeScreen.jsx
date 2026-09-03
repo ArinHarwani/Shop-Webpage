@@ -24,7 +24,15 @@ export default function WelcomeScreen() {
     setPhase('category');
   };
 
-  const handleCategorySelect = async (categoryKey) => {
+  const handleCategorySelect = (categoryKey) => {
+    if (categoryKey === 'one_piece_dresses') {
+      setPhase('dress_subselect');
+      return;
+    }
+    proceedToCatalog(categoryKey);
+  };
+
+  const proceedToCatalog = async (categoryKey) => {
     setSelectedCategory(categoryKey);
     setIsExiting(true);
     await startSession(name.trim());
@@ -94,6 +102,100 @@ export default function WelcomeScreen() {
             </svg>
           </button>
           <p className="text-dust text-xs mt-4">Tap to begin · Session expires in 2 hours</p>
+        </div>
+
+      ) : phase === 'dress_subselect' ? (
+        /* ── Phase 2b: One Piece vs Long Dress Sub-selector ───── */
+        <div className="relative z-10 w-full max-w-xl px-4 animate-fade-up">
+          <div className="text-center mb-6 px-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-light/80 text-accent rounded-full text-xs font-semibold uppercase tracking-wider mb-2">
+              👗 Dresses & One Piece
+            </div>
+            <h2 className="font-display text-3xl sm:text-4xl text-charcoal font-semibold">
+              Select Your Style
+            </h2>
+            <p className="text-slate text-sm mt-1">
+              Choose a specific dress style or view everything
+            </p>
+          </div>
+
+          {/* Subcategory Choices */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            {/* One Piece */}
+            <button
+              onClick={() => proceedToCatalog('one_piece')}
+              className={`group relative bg-white border border-stone rounded-2xl p-5 text-left shadow-card
+                hover:border-accent hover:shadow-card-lg hover:-translate-y-0.5
+                active:scale-[0.97] transition-all duration-250 animate-fade-up
+                ${selectedCategory === 'one_piece' ? 'border-accent bg-accent-light scale-[0.97]' : ''}
+              `}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-3xl">👗</span>
+                <span className="text-xs font-semibold px-2.5 py-1 bg-stone/40 text-slate rounded-full group-hover:bg-accent group-hover:text-ivory transition-colors">
+                  Select →
+                </span>
+              </div>
+              <h3 className="font-semibold text-charcoal text-lg leading-tight mb-1">One Piece</h3>
+              <p className="text-slate text-xs leading-relaxed">
+                Chic midi, short, and casual one-piece dresses
+              </p>
+            </button>
+
+            {/* Long Dress */}
+            <button
+              onClick={() => proceedToCatalog('long_dress')}
+              style={{ animationDelay: '60ms' }}
+              className={`group relative bg-white border border-stone rounded-2xl p-5 text-left shadow-card
+                hover:border-accent hover:shadow-card-lg hover:-translate-y-0.5
+                active:scale-[0.97] transition-all duration-250 animate-fade-up
+                ${selectedCategory === 'long_dress' ? 'border-accent bg-accent-light scale-[0.97]' : ''}
+              `}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-3xl">✨</span>
+                <span className="text-xs font-semibold px-2.5 py-1 bg-stone/40 text-slate rounded-full group-hover:bg-accent group-hover:text-ivory transition-colors">
+                  Select →
+                </span>
+              </div>
+              <h3 className="font-semibold text-charcoal text-lg leading-tight mb-1">Long Dress</h3>
+              <p className="text-slate text-xs leading-relaxed">
+                Full-length maxis, party gowns, and festive dresses
+              </p>
+            </button>
+          </div>
+
+          {/* Option: View Both */}
+          <button
+            onClick={() => proceedToCatalog('one_piece_dresses')}
+            style={{ animationDelay: '120ms' }}
+            className={`w-full group relative bg-white border border-stone rounded-2xl p-4 text-left shadow-card
+              hover:border-accent hover:shadow-card-lg hover:-translate-y-0.5
+              active:scale-[0.97] transition-all duration-250 animate-fade-up flex items-center justify-between
+              ${selectedCategory === 'one_piece_dresses' ? 'border-accent bg-accent-light scale-[0.97]' : ''}
+            `}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🛍️</span>
+              <div>
+                <p className="font-semibold text-charcoal text-sm leading-tight">View All Dresses & One Piece</p>
+                <p className="text-dust text-xs">Browse the complete collection together</p>
+              </div>
+            </div>
+            <span className="text-xs font-semibold text-accent px-3 py-1.5 rounded-xl bg-accent-light">
+              View All
+            </span>
+          </button>
+
+          {/* Back button */}
+          <div className="text-center mt-5">
+            <button
+              onClick={() => setPhase('category')}
+              className="text-dust text-sm hover:text-slate transition-colors inline-flex items-center gap-1"
+            >
+              ← Back to categories
+            </button>
+          </div>
         </div>
 
       ) : (

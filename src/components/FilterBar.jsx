@@ -116,6 +116,45 @@ export default function FilterBar({ filters, onFilterChange }) {
           )}
         </div>
 
+        {/* Style selector strip for One Piece & Dresses */}
+        {isCategoryActive('one_piece_dresses', filters.type) && (
+          <div className="flex items-center gap-2 pt-2.5 pb-0.5 animate-fade-in overflow-x-auto scrollbar-hide">
+            <span className="text-[11px] font-bold text-slate uppercase tracking-wider shrink-0">
+              Style:
+            </span>
+            <button
+              onClick={() => setFilter('type', 'one_piece_dresses')}
+              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                filters.type === 'one_piece_dresses'
+                  ? 'bg-charcoal text-ivory shadow-xs'
+                  : 'bg-white border border-stone text-slate hover:text-charcoal hover:border-dust'
+              }`}
+            >
+              All Styles
+            </button>
+            <button
+              onClick={() => setFilter('type', 'one_piece')}
+              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${
+                filters.type === 'one_piece'
+                  ? 'bg-charcoal text-ivory shadow-xs'
+                  : 'bg-white border border-stone text-slate hover:text-charcoal hover:border-dust'
+              }`}
+            >
+              <span>👗</span> One Piece
+            </button>
+            <button
+              onClick={() => setFilter('type', 'long_dress')}
+              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${
+                filters.type === 'long_dress'
+                  ? 'bg-charcoal text-ivory shadow-xs'
+                  : 'bg-white border border-stone text-slate hover:text-charcoal hover:border-dust'
+              }`}
+            >
+              <span>✨</span> Long Dress
+            </button>
+          </div>
+        )}
+
         {/* Row 2: Secondary filters (collapsible) */}
         <div
           className={`overflow-hidden transition-all duration-300 ease-in-out ${

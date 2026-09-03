@@ -6,9 +6,12 @@ import * as DS from '../../services/DataService';
 
 const EDIT_TYPES = [
   { value: 'top', label: 'Tops' },
-  { value: 'one_piece', label: 'One Piece & Dresses' },
-  { value: 'coord_set', label: 'Coord Sets & Ethnic Fashion' },
+  { value: 'one_piece', label: 'One Piece' },
+  { value: 'long_dress', label: 'Long Dress' },
+  { value: 'coord_set', label: 'Coord Set' },
+  { value: 'kurti', label: 'Kurti' },
   { value: 'bottom', label: 'Bottoms' },
+  { value: 'shorts', label: 'Shorts' },
   { value: 'other', label: 'Others' },
 ];
 
