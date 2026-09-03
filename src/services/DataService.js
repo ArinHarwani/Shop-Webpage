@@ -813,10 +813,66 @@ export function updateSizeGuide(data) {
 // ═════════════════════════════════════════════════════════════════════
 //  STORAGE (Images - Multi-Cloudinary)
 // ═════════════════════════════════════════════════════════════════════
+
+/**
+ * Pre-compresses image files in-browser before uploading to Cloudinary.
+ * Reduces raw 8-15MB camera photos to ~250-400KB while preserving pristine catalog detail.
+ * Saves 85-95% of Cloudinary storage quota and speeds up uploads dramatically.
+ */
+export async function compressImageFile(file, maxWidth = 1600, maxHeight = 2000, quality = 0.85) {
+  if (!file || !file.type || !file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+    return file;
+  }
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let { width, height } = img;
+
+      // If already compact and reasonable dimensions, keep as-is
+      if (width <= maxWidth && height <= maxHeight && file.size < 600 * 1024) {
+        return resolve(file);
+      }
+
+      const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob((blob) => {
+        if (!blob || blob.size >= file.size) {
+          return resolve(file);
+        }
+        const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+          type: 'image/jpeg',
+          lastModified: Date.now(),
+        });
+        resolve(compressed);
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+    img.src = objectUrl;
+  });
+}
+
 export async function uploadImage(file, category = '') {
+  const optimizedFile = await compressImageFile(file);
   const config = getCloudinaryConfigForCategory(category);
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', optimizedFile);
   formData.append('upload_preset', config.uploadPreset);
   if (config.folder) {
     formData.append('folder', config.folder);

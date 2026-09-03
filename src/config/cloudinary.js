@@ -7,8 +7,8 @@
 
 // Default legacy / fallback account
 export const DEFAULT_CLOUDINARY_ACCOUNT = {
-  cloudName: import.meta.env.VITE_CLOUDINARY_FALLBACK_CLOUD_NAME || 'dvdxdqnie',
-  uploadPreset: import.meta.env.VITE_CLOUDINARY_FALLBACK_PRESET || 'shop_products_upload',
+  cloudName: import.meta.env?.VITE_CLOUDINARY_FALLBACK_CLOUD_NAME || 'dvdxdqnie',
+  uploadPreset: import.meta.env?.VITE_CLOUDINARY_FALLBACK_PRESET || 'shop_products_upload',
   folder: 'shop-products',
 };
 
@@ -18,8 +18,8 @@ export const CLOUDINARY_ACCOUNTS = {
   TOPS_KURTIS: {
     id: 'tops_kurtis',
     label: 'Tops & Kurtis',
-    cloudName: import.meta.env.VITE_CLOUDINARY_TOPS_KURTIS_CLOUD_NAME || 'jj9xtjbf',
-    uploadPreset: import.meta.env.VITE_CLOUDINARY_TOPS_KURTIS_PRESET || 'shop_products_upload',
+    cloudName: import.meta.env?.VITE_CLOUDINARY_TOPS_KURTIS_CLOUD_NAME || 'jj9xtjbf',
+    uploadPreset: import.meta.env?.VITE_CLOUDINARY_TOPS_KURTIS_PRESET || 'shop_products_upload',
     folder: 'shop-products',
     categories: ['top', 'kurti'],
   },
@@ -27,8 +27,8 @@ export const CLOUDINARY_ACCOUNTS = {
   DRESSES_ONEPIECE: {
     id: 'dresses_onepiece',
     label: 'One Piece & Dresses',
-    cloudName: import.meta.env.VITE_CLOUDINARY_DRESSES_CLOUD_NAME || 'slvabepb',
-    uploadPreset: import.meta.env.VITE_CLOUDINARY_DRESSES_PRESET || 'shop_products_upload',
+    cloudName: import.meta.env?.VITE_CLOUDINARY_DRESSES_CLOUD_NAME || 'slvabepb',
+    uploadPreset: import.meta.env?.VITE_CLOUDINARY_DRESSES_PRESET || 'shop_products_upload',
     folder: 'shop-products',
     categories: ['long_dress', 'one_piece'],
   },
@@ -36,17 +36,17 @@ export const CLOUDINARY_ACCOUNTS = {
   BOTTOMS_SHORTS: {
     id: 'bottoms_shorts',
     label: 'Denims & Shorts',
-    cloudName: import.meta.env.VITE_CLOUDINARY_BOTTOMS_CLOUD_NAME || 'dvdxdqnie',
-    uploadPreset: import.meta.env.VITE_CLOUDINARY_BOTTOMS_PRESET || 'shop_products_upload',
+    cloudName: import.meta.env?.VITE_CLOUDINARY_BOTTOMS_CLOUD_NAME || 'dvdxdqnie',
+    uploadPreset: import.meta.env?.VITE_CLOUDINARY_BOTTOMS_PRESET || 'shop_products_upload',
     folder: 'shop-products',
     categories: ['bottom', 'shorts'],
   },
   // Account 4: Traditional Wear & Others (Coord Sets, etc.)
   TRADITIONAL_OTHER: {
     id: 'traditional_other',
-    label: 'Traditional Wear & Others',
-    cloudName: import.meta.env.VITE_CLOUDINARY_TRADITIONAL_CLOUD_NAME || 'wzxbak9l',
-    uploadPreset: import.meta.env.VITE_CLOUDINARY_TRADITIONAL_PRESET || 'shop_products_upload',
+    label: 'Traditional & Others',
+    cloudName: import.meta.env?.VITE_CLOUDINARY_TRADITIONAL_CLOUD_NAME || 'wzxbak9l',
+    uploadPreset: import.meta.env?.VITE_CLOUDINARY_TRADITIONAL_PRESET || 'shop_products_upload',
     folder: 'shop-products',
     categories: ['coord_set', 'other', 'traditional'],
   },
