@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import * as DS from '../services/DataService';
+import { saveCatalogState } from '../services/catalogState';
 
 const TYPE_LABELS = {
   top: 'Tops',
@@ -114,6 +115,12 @@ export default function ItemCard({ item, priority = false }) {
   return (
     <Link
       to={`/item/${item.id}`}
+      onClick={() => {
+        saveCatalogState({
+          lastItemId: item.id,
+          scrollY: window.scrollY,
+        });
+      }}
       className="lookbook-card group block no-select"
     >
       {/* Image — 3:4 aspect ratio */}

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import ItemCard from '../../components/ItemCard';
 import { useSession } from '../../contexts/SessionContext';
 import * as DS from '../../services/DataService';
+import { getCatalogState } from '../../services/catalogState';
 
 const TYPE_LABELS = {
   top: 'Tops',
@@ -83,6 +84,7 @@ function CrossFadeImage({ src, alt }) {
 
 export default function ItemDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { addToShortlist, isInShortlist, trackActivity } = useSession();
   const [item, setItem] = useState(null);
   const [selectedColour, setSelectedColour] = useState(null);
@@ -164,9 +166,24 @@ export default function ItemDetail() {
       <Header />
 
       <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6 pb-24">
-        {/* Breadcrumb */}
+        {/* Breadcrumb + Back button */}
         <nav className="flex items-center gap-2 text-sm text-slate mb-6 animate-fade-up">
-          <Link to="/catalog" className="hover:text-accent transition-colors">Catalog</Link>
+          <button
+            onClick={() => {
+              const state = getCatalogState();
+              if (state.filters && state.filters.type) {
+                navigate(`/catalog?type=${state.filters.type}`);
+              } else {
+                navigate('/catalog');
+              }
+            }}
+            className="flex items-center gap-1.5 hover:text-accent transition-colors group"
+          >
+            <svg className="w-3.5 h-3.5 text-dust group-hover:text-accent transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Catalog
+          </button>
           <svg className="w-3.5 h-3.5 text-dust" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>

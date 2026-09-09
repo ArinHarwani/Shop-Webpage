@@ -27,9 +27,29 @@ function preloadImage(url) {
   img.src = url;
 }
 
-export default function SwipeMode({ items }) {
+export default function SwipeMode({
+  items = [],
+  initialIndex = 0,
+  initialItemId = null,
+  onIndexChange,
+}) {
   const { addToShortlist, isInShortlist } = useSession();
-  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Resolve best initial index based on item ID or passed index
+  const getResolvedIndex = () => {
+    if (!items || items.length === 0) return 0;
+    if (initialItemId) {
+      const found = items.findIndex(i => i.id === initialItemId);
+      if (found !== -1) return found;
+    }
+    if (typeof initialIndex === 'number' && initialIndex >= 0 && initialIndex < items.length) {
+      return initialIndex;
+    }
+    return 0;
+  };
+
+  const [currentIndex, setCurrentIndex] = useState(getResolvedIndex);
+  const prevItemsRef = useRef(items);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const [slideDirection, setSlideDirection] = useState('');
@@ -37,10 +57,45 @@ export default function SwipeMode({ items }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const minSwipeDistance = 50;
 
+  // When initialItemId or initialIndex prop changes (e.g. category changed or restored)
   useEffect(() => {
-    setCurrentIndex(0);
-    setSlideDirection('');
-  }, [items]);
+    const resolved = getResolvedIndex();
+    if (resolved !== currentIndex && resolved < items.length) {
+      setCurrentIndex(resolved);
+      setSlideDirection('');
+    }
+  }, [initialItemId, initialIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When items list changes (e.g. after filtering), preserve current item if still in list
+  useEffect(() => {
+    if (!items || items.length === 0) return;
+    const prevItems = prevItemsRef.current;
+    prevItemsRef.current = items;
+
+    // Check if the item currently viewed still exists in the new items list
+    const currentItem = prevItems ? prevItems[currentIndex] : null;
+    if (currentItem) {
+      const foundIdx = items.findIndex(i => i.id === currentItem.id);
+      if (foundIdx !== -1) {
+        if (foundIdx !== currentIndex) {
+          setCurrentIndex(foundIdx);
+        }
+        return;
+      }
+    }
+
+    // If current index is beyond items length, clamp
+    if (currentIndex >= items.length) {
+      setCurrentIndex(Math.max(0, items.length - 1));
+    }
+  }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Notify parent of index and active item changes
+  useEffect(() => {
+    if (items && items[currentIndex]) {
+      onIndexChange?.(currentIndex, items[currentIndex].id);
+    }
+  }, [currentIndex, items, onIndexChange]);
 
   // Preload next image whenever index changes
   useEffect(() => {
@@ -57,7 +112,13 @@ export default function SwipeMode({ items }) {
       setSlideDirection('slide-left');
       setImgLoaded(false);
       setTimeout(() => {
-        setCurrentIndex(prev => prev + 1);
+        setCurrentIndex(prev => {
+          const next = prev + 1;
+          if (items[next]) {
+            onIndexChange?.(next, items[next].id);
+          }
+          return next;
+        });
         setSlideDirection('');
       }, 220);
     }
@@ -68,7 +129,13 @@ export default function SwipeMode({ items }) {
       setSlideDirection('slide-right');
       setImgLoaded(false);
       setTimeout(() => {
-        setCurrentIndex(prev => prev - 1);
+        setCurrentIndex(prev => {
+          const next = prev - 1;
+          if (items[next]) {
+            onIndexChange?.(next, items[next].id);
+          }
+          return next;
+        });
         setSlideDirection('');
       }, 220);
     }
@@ -107,7 +174,11 @@ export default function SwipeMode({ items }) {
           You've browsed through the entire collection. Ask our staff to see more.
         </p>
         <button
-          onClick={() => { setCurrentIndex(0); setSlideDirection(''); }}
+          onClick={() => {
+            setCurrentIndex(0);
+            setSlideDirection('');
+            if (items[0]) onIndexChange?.(0, items[0].id);
+          }}
           className="px-6 py-3 bg-white border border-stone text-charcoal font-semibold rounded-xl hover:border-accent hover:text-accent transition-all duration-200 shadow-card"
         >
           Browse Again
@@ -169,6 +240,7 @@ export default function SwipeMode({ items }) {
       >
         <Link
           to={`/item/${item.id}`}
+          onClick={() => onIndexChange?.(currentIndex, item.id)}
           className="block bg-white rounded-3xl overflow-hidden shadow-card-lg border border-stone/60 no-select"
         >
           {/* Image */}
@@ -296,7 +368,10 @@ export default function SwipeMode({ items }) {
               {/* View details */}
               <Link
                 to={`/item/${item.id}`}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onIndexChange?.(currentIndex, item.id);
+                }}
                 className="w-11 h-11 flex items-center justify-center rounded-xl border border-stone text-slate hover:border-accent hover:text-accent hover:bg-accent-light transition-all duration-200"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

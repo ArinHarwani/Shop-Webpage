@@ -6,6 +6,11 @@ import ItemCard from '../../components/ItemCard';
 import SwipeMode from '../../components/SwipeMode';
 import * as DS from '../../services/DataService';
 import { useSession } from '../../contexts/SessionContext';
+import {
+  getCatalogState,
+  saveCatalogState,
+  updateCatalogIndex,
+} from '../../services/catalogState';
 
 const ITEMS_PER_PAGE = 24;
 
@@ -71,27 +76,85 @@ function ViewToggle({ viewMode, onChange }) {
 export default function CatalogGrid() {
   const { trackActivity } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialType = searchParams.get('type') || null;
+  const urlType = searchParams.get('type');
 
-  const [filters, setFilters] = useState({
-    type: initialType,
-    occasion: 'All',
-    collection: 'All',
-    sizes: [],
-    colours: [],
-  });
-  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [isLoading, setIsLoading] = useState(!!initialType);
-  // Swipe is the default view
-  const [viewMode, setViewMode] = useState('swipe');
+  // Load persisted browsing state
+  const [savedState] = useState(() => getCatalogState());
 
-  // Sync URL type param on initial load
-  useEffect(() => {
-    if (initialType) {
-      setFilters(f => ({ ...f, type: initialType }));
+  // Determine effective initial filters
+  const [filters, setFilters] = useState(() => {
+    if (urlType) {
+      if (savedState.filters && savedState.filters.type === urlType) {
+        return savedState.filters;
+      }
+      return {
+        type: urlType,
+        occasion: 'All',
+        collection: 'All',
+        sizes: [],
+        colours: [],
+      };
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (savedState.filters && savedState.filters.type) {
+      return savedState.filters;
+    }
+    return {
+      type: null,
+      occasion: 'All',
+      collection: 'All',
+      sizes: [],
+      colours: [],
+    };
+  });
+
+  // Determine initial view mode
+  const [viewMode, setViewMode] = useState(() => savedState.viewMode || 'swipe');
+
+  // Determine initial visible count for grid mode
+  const [visibleCount, setVisibleCount] = useState(() => {
+    if (savedState.viewMode === 'grid' && savedState.visibleCount > ITEMS_PER_PAGE) {
+      return savedState.visibleCount;
+    }
+    return ITEMS_PER_PAGE;
+  });
+
+  // Determine initial swipe index & item ID
+  const isMatchingCategory = filters.type && savedState.filters && filters.type === savedState.filters.type;
+  const [swipeIndex, setSwipeIndex] = useState(isMatchingCategory ? savedState.currentIndex : 0);
+  const [swipeItemId, setSwipeItemId] = useState(isMatchingCategory ? savedState.lastItemId : null);
+
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [isLoading, setIsLoading] = useState(!!filters.type && !isMatchingCategory);
+
+  // Sync URL search params if category is set but URL is missing ?type=
+  useEffect(() => {
+    if (filters.type && searchParams.get('type') !== filters.type) {
+      setSearchParams({ type: filters.type }, { replace: true });
+    }
+  }, [filters.type]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle browser back/forward URL parameter changes
+  useEffect(() => {
+    const currentUrlType = searchParams.get('type');
+    if (currentUrlType && currentUrlType !== filters.type) {
+      const state = getCatalogState();
+      if (state.filters && state.filters.type === currentUrlType) {
+        setFilters(state.filters);
+        setSwipeIndex(state.currentIndex || 0);
+        setSwipeItemId(state.lastItemId || null);
+      } else {
+        setFilters({
+          type: currentUrlType,
+          occasion: 'All',
+          collection: 'All',
+          sizes: [],
+          colours: [],
+        });
+        setSwipeIndex(0);
+        setSwipeItemId(null);
+      }
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Listen for data changes
   useEffect(() => {
@@ -102,34 +165,96 @@ export default function CatalogGrid() {
   const allItems = useMemo(() => {
     if (!filters.type) return [];
     return DS.getItems(filters);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, refreshKey]);
 
   // Skeleton delay on type change
   const loadingTimer = useRef(null);
+  const prevTypeRef = useRef(filters.type);
   useEffect(() => {
-    if (filters.type) {
+    if (filters.type && filters.type !== prevTypeRef.current) {
+      prevTypeRef.current = filters.type;
       setIsLoading(true);
       clearTimeout(loadingTimer.current);
-      loadingTimer.current = setTimeout(() => setIsLoading(false), 400);
+      loadingTimer.current = setTimeout(() => setIsLoading(false), 300);
     }
     return () => clearTimeout(loadingTimer.current);
   }, [filters.type]);
+
+  // Restore scroll position in grid mode
+  useEffect(() => {
+    if (viewMode === 'grid' && savedState.scrollY > 0) {
+      const timer = setTimeout(() => {
+        window.scrollTo({ top: savedState.scrollY, behavior: 'instant' });
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [viewMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save scroll position in grid mode
+  useEffect(() => {
+    if (viewMode !== 'grid') return;
+    let scrollTimer = null;
+    const onScroll = () => {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        saveCatalogState({ scrollY: window.scrollY });
+      }, 150);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      clearTimeout(scrollTimer);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [viewMode]);
 
   const paginatedItems = allItems.slice(0, visibleCount);
   const hasMore = visibleCount < allItems.length;
 
   const handleFilterChange = (newFilters) => {
+    const typeChanged = newFilters.type !== filters.type;
     setFilters(newFilters);
     setVisibleCount(ITEMS_PER_PAGE);
     trackActivity();
+
+    const nextIndex = typeChanged ? 0 : swipeIndex;
+    const nextItemId = typeChanged ? null : swipeItemId;
+    if (typeChanged) {
+      setSwipeIndex(0);
+      setSwipeItemId(null);
+    }
+
+    saveCatalogState({
+      filters: newFilters,
+      currentIndex: nextIndex,
+      lastItemId: nextItemId,
+      visibleCount: ITEMS_PER_PAGE,
+      scrollY: 0,
+    });
+
     if (newFilters.type) {
       setSearchParams({ type: newFilters.type }, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
     }
   };
 
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    saveCatalogState({ viewMode: mode });
+  };
+
+  const handleSwipeIndexChange = (index, itemId) => {
+    setSwipeIndex(index);
+    setSwipeItemId(itemId);
+    updateCatalogIndex(index, itemId);
+  };
+
   const handleLoadMore = () => {
-    setVisibleCount(prev => prev + ITEMS_PER_PAGE);
+    setVisibleCount(prev => {
+      const next = prev + ITEMS_PER_PAGE;
+      saveCatalogState({ visibleCount: next });
+      return next;
+    });
   };
 
   return (
@@ -207,13 +332,18 @@ export default function CatalogGrid() {
               <p className="text-sm text-slate">
                 <span className="font-semibold text-charcoal">{allItems.length}</span> items
               </p>
-              <ViewToggle viewMode={viewMode} onChange={setViewMode} />
+              <ViewToggle viewMode={viewMode} onChange={handleViewModeChange} />
             </div>
 
             {/* ── Swipe mode (default) ─────────────────── */}
             {viewMode === 'swipe' && (
               <div className="animate-fade-up">
-                <SwipeMode items={allItems} />
+                <SwipeMode
+                  items={allItems}
+                  initialIndex={swipeIndex}
+                  initialItemId={swipeItemId}
+                  onIndexChange={handleSwipeIndexChange}
+                />
               </div>
             )}
 

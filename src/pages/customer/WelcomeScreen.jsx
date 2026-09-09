@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '../../contexts/SessionContext';
 import * as DS from '../../services/DataService';
+import { clearCatalogState } from '../../services/catalogState';
 
 const CATEGORIES = [
   { key: 'top',               label: 'Tops',                          emoji: '👕' },
@@ -35,6 +36,7 @@ export default function WelcomeScreen() {
   const proceedToCatalog = async (categoryKey) => {
     setSelectedCategory(categoryKey);
     setIsExiting(true);
+    clearCatalogState(); // New customer always starts fresh
     await startSession(name.trim());
     setTimeout(() => navigate(`/catalog?type=${categoryKey}`), 350);
   };

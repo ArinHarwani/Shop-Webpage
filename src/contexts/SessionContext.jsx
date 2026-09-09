@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import * as DS from '../services/DataService';
+import { clearCatalogState } from '../services/catalogState';
 
 const SessionContext = createContext(null);
 
@@ -69,6 +70,7 @@ export function SessionProvider({ children }) {
       if (diff >= ONE_HOUR) {
         DS.expireSession(sessionId);
         localStorage.removeItem('dm_current_session');
+        clearCatalogState();
         setSessionId(null);
         navigate('/expired');
       }
@@ -91,6 +93,7 @@ export function SessionProvider({ children }) {
       await DS.expireSession(sessionId);
     }
     localStorage.removeItem('dm_current_session');
+    clearCatalogState();
     setSessionId(null);
     setShortlist([]);
     setShortlistCount(0);
