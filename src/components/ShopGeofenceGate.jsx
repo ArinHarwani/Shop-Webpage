@@ -30,7 +30,7 @@ function FullScreenContainer({ children, shopName = 'Fever Profile Fashion' }) {
 }
 
 export function ShopGeofenceGate({ children }) {
-  const { status, recheck, distance, radiusMeters } = useShopGeofence();
+  const { status, recheck, distance, radiusMeters, errorDetails } = useShopGeofence();
   const [showHelp, setShowHelp] = useState(false);
   const settings = DS.getSettings();
   const shopName = settings.shopName || 'Fever Profile Fashion';
@@ -76,6 +76,8 @@ export function ShopGeofenceGate({ children }) {
 
   // ── 3. DENIED STATE ────────────────────────────────────────────
   if (status === 'denied') {
+    const isSecure = window.isSecureContext;
+
     return (
       <FullScreenContainer shopName={shopName}>
         {/* Denied Icon */}
@@ -124,6 +126,12 @@ export function ShopGeofenceGate({ children }) {
             <p>2. Set <strong>Location</strong> permission to <strong>Allow</strong>.</p>
             <p>3. Tap the <strong>Try Again</strong> button above.</p>
           </div>
+        )}
+
+        {errorDetails?.message && (
+          <p className="mt-6 text-[10px] text-dust/60 tracking-wider">
+            ERR: {errorDetails.message}
+          </p>
         )}
       </FullScreenContainer>
     );
@@ -209,6 +217,12 @@ export function ShopGeofenceGate({ children }) {
         </svg>
         Retry
       </button>
+
+      {errorDetails?.message && (
+        <p className="mt-6 text-[10px] text-dust/60 tracking-wider">
+          ERR: {errorDetails.code} - {errorDetails.message}
+        </p>
+      )}
     </FullScreenContainer>
   );
 }

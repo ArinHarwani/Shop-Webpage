@@ -33,6 +33,7 @@ export function useShopGeofence() {
   const [accuracy, setAccuracy] = useState(null);
   const [coords, setCoords] = useState(null);
   const [settings, setSettings] = useState(() => DS.getSettings());
+  const [errorDetails, setErrorDetails] = useState({ code: null, message: '' });
 
   const intervalRef = useRef(null);
   const statusRef = useRef(status);
@@ -114,6 +115,7 @@ export function useShopGeofence() {
       },
       (err) => {
         setLastChecked(new Date());
+        setErrorDetails({ code: err.code, message: err.message });
         // err.code: 1 = permission denied, 2 = position unavailable, 3 = timeout
         if (err.code === 1) {
           setStatus('denied');
@@ -161,6 +163,7 @@ export function useShopGeofence() {
     shopLat,
     shopLng,
     radiusMeters,
+    errorDetails,
     recheck: () => checkLocation(true),
   };
 }
