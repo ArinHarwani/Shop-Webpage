@@ -245,14 +245,29 @@ export default function AdminItemDetail() {
 
   return (
     <AdminLayout>
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link to="/admin/inventory" className="hover:text-brand-600 transition-colors">Inventory</Link>
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-        <span className="text-gray-900 font-medium">{item.name}</span>
-      </nav>
+      {/* Breadcrumb & Back Navigation */}
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <nav className="flex items-center gap-2.5 text-sm text-gray-500 flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/admin/inventory');
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-gray-200 text-gray-700 hover:text-brand-600 hover:border-brand-200 shadow-sm transition-all font-medium group"
+          >
+            <svg className="w-4 h-4 text-gray-400 group-hover:text-brand-600 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Back to Inventory</span>
+          </button>
+          <span className="text-gray-300">/</span>
+          <span className="text-gray-900 font-semibold truncate max-w-xs sm:max-w-md">{item.name}</span>
+        </nav>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Info */}
